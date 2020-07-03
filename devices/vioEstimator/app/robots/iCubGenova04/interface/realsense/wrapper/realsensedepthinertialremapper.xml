@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE devices PUBLIC "-//YARP//DTD yarprobotinterface 3.0//EN" "http://www.yarp.it/DTD/yarprobotinterfaceV3.0.dtd">
+
+
+    <device xmlns:xi="http://www.w3.org/2001/XInclude" name="d435i-inertials_remapper" type="multipleanalogsensorsremapper">
+        <param name="period">       10                              </param>
+        <!-- The below parameter names are set from the macro MAS_getTagFromEnum(enum MAS_SensorType) + "Names"
+             defined in <yarp/dev/MultipleAnalogSensorsInterfaces.h> and respective device source file -->
+        <param name="ThreeAxisGyroscopesNames">
+          (/gyro_sensor)
+        </param>
+        <param name="ThreeAxisLinearAccelerometersNames">
+          (/accelerations_sensor)
+        </param>
+        <param name="OrientationSensorsNames">
+          (/orientation_sensor)
+        </param>
+        <action phase="startup" level="5" type="attach">
+            <paramlist name="networks">
+                <elem name="depthCamera-inertial_remapper">  realsense-d435i </elem>
+            </paramlist>
+        </action>
+
+        <action phase="shutdown" level="5" type="detach" />
+    </device>

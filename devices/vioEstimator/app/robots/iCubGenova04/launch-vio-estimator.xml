@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE robot PUBLIC "-//YARP//DTD yarprobotinterface 3.0//EN" "http://www.yarp.it/DTD/yarprobotinterfaceV3.0.dtd">
+
+<robot name="iCubGenova04" build="1" xmlns:xi="http://www.w3.org/2001/XInclude">
+    <devices>
+
+        <!-- realsense -->
+        <xi:include href="interface/realsense/hardware/realsense-cam.xml"/>        
+        <xi:include href="interface/realsense/wrapper/realsense_rgbdwrapper.xml"/>
+        <xi:include href="interface/realsense/wrapper/realsensedepthinertialremapper.xml"/>
+        <xi:include href="interface/realsense/wrapper/realsense-mas.xml"/>
+       
+        <!-- estimator -->
+        <xi:include href="estimators/vio-estimator.xml" />
+    </devices>
+
+</robot>
