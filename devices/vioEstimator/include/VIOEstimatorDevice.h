@@ -7,6 +7,9 @@
 #include <yarp/dev/Wrapper.h>
 
 #include <YARPRobotsHelper/RobotSensorBridge.h>
+#include <YARPRobotsHelper/YarpHelper.hpp>
+
+#include <mutex>
 
 namespace wbe
 {
@@ -26,6 +29,10 @@ namespace wbe
             virtual bool attachAll(const yarp::dev::PolyDriverList & poly);
             virtual bool detachAll();
             virtual void run();
+
+        private:
+            std::unique_ptr<YarpHelper::RobotSensorBridge> m_robot_sensor_bridge;
+            std::mutex m_device_mutex;
         };
     }
 }
