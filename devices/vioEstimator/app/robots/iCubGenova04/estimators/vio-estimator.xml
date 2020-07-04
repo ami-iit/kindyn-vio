@@ -10,16 +10,16 @@
             <param name="gyro_list">("/gyro_sensor")</param>
             <param name="accelerometer_list">("/accelerations_sensor")</param>
         </group>
-        
+
         <group name="Cameras">
-            <param name="rgbd_list">("d435i_depthcam")</param>            
+            <param name="rgbd_list">("d435i_depthcam")</param>
         </group>
     </group>
 
     <action phase="startup" level="15" type="attach">
         <paramlist name="networks">
-            <elem name="depthCameraInertials">depthCamera-inertial_remapper</elem>
-            <elem name="d435i_depthcam">d435i_depthcam</elem>
+            <elem name="depthCameraInertials">d435i-inertials_remapper</elem>
+            <elem name="d435i_depthcam">vio_realsense_client</elem>
         </paramlist>
     </action>
     <action phase="shutdown" level="2" type="detach" />

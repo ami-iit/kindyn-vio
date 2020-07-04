@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE devices PUBLIC "-//YARP//DTD yarprobotinterface 3.0//EN" "http://www.yarp.it/DTD/yarprobotinterfaceV3.0.dtd">
+
+<device xmlns:xi="http://www.w3.org/2001/XInclude" name="vio_realsense_client" type="RGBDSensorClient">
+    <param name="remoteImagePort">/depthCamera/rgbImage:o</param>
+    <param name="localImagePort">/vio/rgbImage:i</param>
+    <param name="remoteDepthPort">/depthCamera/depthImage:o</param>
+    <param name="localDepthPort">/vio/depthImage:i</param>
+    <param name="localRpcPort">/vio/RGBD/rpc:o</param>
+    <param name="remoteRpcPort">/depthCamera/rpc:i</param>
+</device>

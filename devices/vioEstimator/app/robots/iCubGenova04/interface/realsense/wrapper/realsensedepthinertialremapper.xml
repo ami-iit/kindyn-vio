@@ -12,9 +12,9 @@
         <param name="ThreeAxisLinearAccelerometersNames">
           (/accelerations_sensor)
         </param>
-        <param name="OrientationSensorsNames">
+<!--        <param name="OrientationSensorsNames">
           (/orientation_sensor)
-        </param>
+        </param>-->
         <action phase="startup" level="5" type="attach">
             <paramlist name="networks">
                 <elem name="depthCamera-inertial_remapper">  realsense-d435i </elem>
