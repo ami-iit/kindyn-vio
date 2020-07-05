@@ -11,6 +11,7 @@ target_link_libraries(VIOEstimatorDevice PUBLIC YARP::YARP_eigen
                                                 YARP::YARP_os
                                                 YARP::YARP_sig
                                                 YARP::YARP_dev
+                                                YARP::YARP_cv
                                                 YARPRobotsHelper::yarp-robots-helper
                                                 ${iDynTree_LIBRARIES}
                                          PRIVATE Eigen3::Eigen)

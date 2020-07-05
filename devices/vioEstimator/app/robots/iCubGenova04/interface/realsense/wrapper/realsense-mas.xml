@@ -3,15 +3,15 @@
 
 
     <device xmlns:xi="http://www.w3.org/2001/XInclude" name="D435i-inertials_wrapper" type="multipleanalogsensorsserver">
-        <param name="period">       10                  </param>
+        <param name="period">       1                  </param>
         <param name="name">     /depthCamera/inertials       </param>
 
        <action phase="startup" level="5" type="attach">
             <paramlist name="networks">
-                <elem name="InertialsRemapper">d435i-inertials_remapper</elem>                
+                <elem name="InertialsRemapper">d435i-inertials_remapper</elem>
             </paramlist>
-        </action> 
+        </action>
 
-        <action phase="shutdown" level="5" type="detach" /> 
-    </device> 
-    
+        <action phase="shutdown" level="5" type="detach" />
+    </device>
+

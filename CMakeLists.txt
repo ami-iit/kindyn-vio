@@ -75,7 +75,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # Find packages
-find_package(YARP 3.3.2 REQUIRED COMPONENTS eigen os sig dev)
+find_package(YARP 3.3.2 REQUIRED COMPONENTS eigen os sig dev cv)
 find_package(Eigen3 3.2.92 REQUIRED)
 find_package(iDynTree 1.1.0 REQUIRED)
 find_package(YARPRobotsHelper REQUIRED)
