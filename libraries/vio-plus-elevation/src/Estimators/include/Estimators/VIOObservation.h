@@ -25,6 +25,15 @@ namespace Viper
             }
         };
 
+        class IMUSensorStdDev
+        {
+        public:
+            iDynTree::Vector3 sigma_a; // accelerometer Gaussian white noise deviation
+            iDynTree::Vector3 sigma_g; // gyroscope Gaussian white noise deviation
+            iDynTree::Vector3 sigma_ba; // accelerometer bias random walk noise deviation
+            iDynTree::Vector3 sigma_bg; // gyroscope bias random walk noise deviation
+        };
+
     }
 }
 
