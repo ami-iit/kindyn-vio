@@ -95,13 +95,13 @@ function(ADD_INSTALL_RPATH_SUPPORT)
   set(_options USE_LINK_PATH)
   set(_oneValueArgs INSTALL_NAME_DIR)
   set(_multiValueArgs BIN_DIRS
-                      LIB_DIRS
-                      DEPENDS)
+    LIB_DIRS
+    DEPENDS)
 
   cmake_parse_arguments(_ARS "${_options}"
-                             "${_oneValueArgs}"
-                             "${_multiValueArgs}"
-                             "${ARGN}")
+    "${_oneValueArgs}"
+    "${_multiValueArgs}"
+    "${ARGN}")
 
   # if either RPATH or INSTALL_RPATH is disabled
   # and the INSTALL_NAME_DIR variable is set, then hardcode the install name
@@ -134,10 +134,10 @@ function(ADD_INSTALL_RPATH_SUPPORT)
     # Find system implicit lib directories
     set(_system_lib_dirs ${CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES})
     if(EXISTS "/etc/debian_version") # is this a debian system ?
-        if(CMAKE_LIBRARY_ARCHITECTURE)
-            list(APPEND _system_lib_dirs "/lib/${CMAKE_LIBRARY_ARCHITECTURE}"
-                                         "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
-        endif()
+      if(CMAKE_LIBRARY_ARCHITECTURE)
+        list(APPEND _system_lib_dirs "/lib/${CMAKE_LIBRARY_ARCHITECTURE}"
+          "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+      endif()
     endif()
     # This is relative RPATH for libraries built in the same project
     foreach(lib_dir ${_ARS_LIB_DIRS})
@@ -148,7 +148,7 @@ function(ADD_INSTALL_RPATH_SUPPORT)
           if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
             list(APPEND CMAKE_INSTALL_RPATH "@loader_path/${_rel_path}")
           else()
-            list(APPEND CMAKE_INSTALL_RPATH "\$ORIGIN/${_rel_path}")
+            list(APPEND CMAKE_INSTALL_RPATH "$ORIGIN/${_rel_path}")
           endif()
         endforeach()
       endif()

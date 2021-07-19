@@ -1,8 +1,29 @@
-cmake_minimum_required(VERSION 3.5)
-set(CMAKE_CXX_STANDART 14)
+# Copyright (C) 2021 Istituto Italiano di Tecnologia (IIT). All rights reserved.
+# This software may be modified and distributed under the terms of the
+# GNU Lesser General Public License v2.1 or any later version.
 
-project(vio-plus-elevation
-        VERSION 0.0.1)
+cmake_minimum_required(VERSION 3.16)
+
+## MAIN project
+project(KinDynVIO
+  VERSION 0.0.1)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" ON)
+
+# Check KinDynVIO dependencies, find necessary libraries.
+include(KinDynVIODependencies)
+
+#set default build type to "Release" in single-config generators
+if(NOT CMAKE_CONFIGURATION_TYPES)
+    if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+        "Choose the type of build, recommanded options are: Debug or Release" FORCE)
+    endif()
+    set(ROBOTOLOGY_BUILD_TYPES "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${ROBOTOLOGY_BUILD_TYPES})
+endif()
 
 # Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros.
 # See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
@@ -19,8 +40,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}"
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
 # To build shared libraries in Windows, we set CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS to TRUE.
 # See https://cmake.org/cmake/help/v3.4/variable/CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS.html
 # See https://blog.kitware.com/create-dlls-on-windows-without-declspec-using-new-cmake-export-all-feature/
@@ -34,59 +53,37 @@ if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
 endif()
 
-# Build position independent code.
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# Disable C and C++ compiler extensions.
-# C/CXX_EXTENSIONS are ON by default to allow the compilers to use extended
-# variants of the C/CXX language.
-# However, this could expose cross-platform bugs in user code or in the headers
-# of third-party dependencies and thus it is strongly suggested to turn
-# extensions off.
-set(CMAKE_C_EXTENSIONS OFF)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-### Options
-# Shared/Dynamic or Static library?
-option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" ON)
-
-# Build test related commands?
-option(BUILD_TESTING "Create tests using CMake" OFF)
-if(BUILD_TESTING)
-    enable_testing()
-endif()
-
-# Enable RPATH support for installed binaries and libraries
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
 include(AddInstallRPATHSupport)
 add_install_rpath_support(BIN_DIRS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
-                          LIB_DIRS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
-                          INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}"
-                          DEPENDS ENABLE_RPATH
-                          USE_LINK_PATH)
+  LIB_DIRS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+  INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}"
+  DEPENDS ENABLE_RPATH
+  USE_LINK_PATH)
 
-# Encourage user to specify a build type (e.g. Release, Debug, etc.), otherwise set it to Release.
-if(NOT CMAKE_CONFIGURATION_TYPES)
-    if(NOT CMAKE_BUILD_TYPE)
-        message(STATUS "Setting build type to 'Release' as none was specified.")
-        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY VALUE "Release")
-    endif()
-endif()
+#Function to automatize the process of creating a new library
+include(AddKinDynVIOLibrary)
 
-# Find packages
-find_package(YARP 3.3.2 REQUIRED COMPONENTS eigen os sig dev cv)
-find_package(Eigen3 3.2.92 REQUIRED)
-find_package(iDynTree 1.1.0 REQUIRED)
-find_package(YARPRobotsHelper REQUIRED)
+add_subdirectory(src)
 
-### Compile- and install-related commands.
-add_subdirectory(libraries)
-add_subdirectory(devices)
+#Creates the interface target KinDynVIO::Framework that depends on all the targets.
+#By including the file "KinDynVIO/KinDynVIO.h" it is possible to include all the headers automatically.
+include(AddKinDynVIOTarget)
 
-# Add the uninstall target
+
+include(InstallBasicPackageFiles)
+get_property(FRAMEWORK_PRIVATE_DEPENDENCIES GLOBAL PROPERTY KinDynVIO_PrivateDependencies)
+get_property(FRAMEWORK_PUBLIC_DEPENDENCIES GLOBAL PROPERTY KinDynVIO_PublicDependencies)
+install_basic_package_files(${PROJECT_NAME}
+                            NAMESPACE KinDynVIO::
+                            VERSION ${KinDynVIO_VERSION}
+                            COMPATIBILITY AnyNewerVersion
+                            TARGETS_PROPERTY KinDynVIO_TARGETS
+                            VARS_PREFIX ${PROJECT_NAME}
+                            NO_CHECK_REQUIRED_COMPONENTS_MACRO
+                            DEPENDENCIES ${FRAMEWORK_PUBLIC_DEPENDENCIES}
+                            PRIVATE_DEPENDENCIES ${FRAMEWORK_PRIVATE_DEPENDENCIES})
+
+
 include(AddUninstallTarget)
-
-# Add targets related to doxygen documention generation
-add_subdirectory(doc)
-
