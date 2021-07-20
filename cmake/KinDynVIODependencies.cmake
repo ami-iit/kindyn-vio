@@ -24,6 +24,8 @@ find_package(OpenCV 4.0.0 REQUIRED)
 
 find_package(GTSAM REQUIRED)
 
+find_package(matioCpp REQUIRED)
+
 ########################## Optional dependencies ##############################
 
 find_package(Catch2 QUIET)
