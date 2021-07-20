@@ -37,3 +37,7 @@ build/*
 # MacOS
 .DS_Store
 
+# IDE
+.kdev4/*
+*.kdev4
+
