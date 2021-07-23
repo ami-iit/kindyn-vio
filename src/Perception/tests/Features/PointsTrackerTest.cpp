@@ -158,6 +158,7 @@ TEST_CASE("Point Tracker Unit Test")
     cv::Mat outImg2;
     imgProc.getImageWithDetectedFeatures(outImg2);
 
-//     cv::imshow("processed Frame 1", outImg1);
-//     cv::imshow("processed Frame 2", outImg2);
+//    cv::imshow("processed Frame 1", outImg1);
+//    cv::imshow("processed Frame 2", outImg2);
+//    cv::waitKey();
 }

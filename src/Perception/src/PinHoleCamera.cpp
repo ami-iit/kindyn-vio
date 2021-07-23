@@ -119,15 +119,30 @@ void PinHoleCamera::unprojectPoints(const std::vector<cv::Point2f>& uvs,
     const auto& cx{m_K(0, 2)};
     const auto& cy{m_K(1, 2)};
     xcs.clear();
+
+    // does the operation of Kinv * uv
+    // to get normalized coordinates
     for (const auto& uv : uvs)
     {
         cv::Point2f nPt;
         nPt.x = (uv.x - cx)/fx;
         nPt.y = (uv.y - cy)/fy;
-
+        // nPt.z = 1; // so we ignore it
         xcs.emplace_back(nPt);
     }
 }
+
+void PinHoleCamera::unprojectPoint(const cv::Point2f& uv,
+                                   cv::Point2f& xc)
+{
+    const auto& fx{m_K(0, 0)};
+    const auto& fy{m_K(1, 1)};
+    const auto& cx{m_K(0, 2)};
+    const auto& cy{m_K(1, 2)};
+    xc.x = (uv.x - cx)/fx;
+    xc.y = (uv.y - cy)/fy;
+}
+
 
 const cv::Mat& PinHoleCamera::calibMat() const
 {

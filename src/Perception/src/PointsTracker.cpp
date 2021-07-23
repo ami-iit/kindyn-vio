@@ -95,9 +95,10 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
 
     prevPoints = forwardedPoints;
 
-    trackedPoints.pts = forwardedPoints;
+    trackedPoints.uvs = forwardedPoints;
     trackedPoints.ids = trackedIDs;
     trackedPoints.counts = trackCount;
+    camera->unprojectPoints(trackedPoints.uvs, trackedPoints.pts);
     return true;
 }
 

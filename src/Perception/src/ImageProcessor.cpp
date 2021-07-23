@@ -42,6 +42,7 @@ public:
     cv::Size claheTileSize{cv::Size(8, 8)};
 
     TimeStampedImg currImg, prevImg;
+
     PointsTracker ptsTracker;
     TrackedPoints trackedPoints;
 
@@ -115,7 +116,7 @@ bool ImageProcessor::setCameraModel(std::shared_ptr<PinHoleCamera> camera)
     return true;
 }
 
-bool ImageProcessor::setImage(const cv::Mat& img, const double&  receiveTimeInSeconds)
+bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSeconds)
 {
     std::string printPrefix{"[ImageProcessor::setImage]"};
     if (!m_pimpl->initialized)
@@ -192,26 +193,33 @@ bool ImageProcessor::advance()
 
 bool ImageProcessor::Impl::trackPoints()
 {
+    std::string printPrefix{"[ImageProcessor::Impl::trackPoints]"};
+    auto begin = BipedalLocomotion::clock().now();
     if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, trackedPoints))
     {
         return false;
     }
+
+    if (debug)
+    {
+        auto end = BipedalLocomotion::clock().now();
+        BipedalLocomotion::log()->info("{} Tracking point features took {} seconds.",
+                                        printPrefix, (end - begin).count());
+    }
     return true;
 }
 
-
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
-//     outImg = m_pimpl->currImg.img;
     cv::cvtColor(m_pimpl->currImg.img, outImg, cv::COLOR_GRAY2RGB);
     if (m_pimpl->trackerType == TrackerType::POINTS ||
         m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
-        for (std::size_t jdx = 0; jdx < m_pimpl->trackedPoints.pts.size(); jdx++)
+        for (std::size_t jdx = 0; jdx < m_pimpl->trackedPoints.uvs.size(); jdx++)
         {
             const int windowSize = 10;
             double len{std::min(1.0, 1.0*m_pimpl->trackedPoints.counts[jdx]/windowSize)};
-            cv::circle(outImg, m_pimpl->trackedPoints.pts[jdx], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
+            cv::circle(outImg, m_pimpl->trackedPoints.uvs[jdx], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
         }
     }
     return true;
