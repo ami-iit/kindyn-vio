@@ -12,16 +12,16 @@
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
 #include <BipedalLocomotion/ParametersHandler/StdImplementation.h>
 #include <BipedalLocomotion/Perception/Features/ArucoDetector.h>
-#include <iDynTree/Core/EigenHelpers.h>
 #include <Eigen/Dense>
+#include <iDynTree/Core/EigenHelpers.h>
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 #include <PerceptionFeaturesResourceFolderPath.h>
 
-#include <KinDynVIO/Perception/Features/ImageProcessor.h>
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
+#include <KinDynVIO/Perception/Features/ImageProcessor.h>
 
 using namespace BipedalLocomotion::Perception;
 using namespace KinDynVIO::Perception;
@@ -29,7 +29,8 @@ using namespace BipedalLocomotion::ParametersHandler;
 
 constexpr double dt{0.066};
 
-// bool getCameraMotionFromArucoMarkers(const cv::Mat& frame1, const cv::Mat& frame2, iDynTree::Transform& c1_H_c2)
+// bool getCameraMotionFromArucoMarkers(const cv::Mat& frame1, const cv::Mat& frame2,
+// iDynTree::Transform& c1_H_c2)
 // {
 //     // Initialize the detector
 //     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
@@ -105,14 +106,13 @@ std::shared_ptr<PinHoleCamera> getCamera(int row, int col)
 {
     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
     // Obtained from the realsense camera used for capturing the images
-    std::vector<double> K{616.873107910156,             0., 314.136962890625,
-                                        0., 617.2548828125, 244.331726074219,
-                          0.,             0.,               1.};
+    std::vector<double>
+        K{616.873107910156, 0., 314.136962890625, 0., 617.2548828125, 244.331726074219, 0., 0., 1.};
     std::vector<double> gamma{0.0, 0.0, 0.0, 0.0, 0.0};
 
     parameterHandler->setParameter("width", col);
     parameterHandler->setParameter("height", row);
-    parameterHandler->setParameter("camera_matrix",   K);
+    parameterHandler->setParameter("camera_matrix", K);
     parameterHandler->setParameter("distortion_coefficients", gamma);
 
     auto camera = std::make_shared<PinHoleCamera>();
@@ -134,9 +134,10 @@ TEST_CASE("Point Tracker Unit Test")
 
     auto camera = getCamera(frame1.rows, frame1.cols);
 
-//     iDynTree::Transform c1_H_c2;
-//     REQUIRE(getCameraMotionFromArucoMarkers(frame1, frame2, c1_H_c2));
-//     std::cout << "Camera pose from frame 1 to frame 2: \n" << iDynTree::toEigen(c1_H_c2.asHomogeneousTransform()) << std::endl;
+    //     iDynTree::Transform c1_H_c2;
+    //     REQUIRE(getCameraMotionFromArucoMarkers(frame1, frame2, c1_H_c2));
+    //     std::cout << "Camera pose from frame 1 to frame 2: \n" <<
+    //     iDynTree::toEigen(c1_H_c2.asHomogeneousTransform()) << std::endl;
 
     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
     parameterHandler->setParameter("tracker_type", "points");
@@ -152,13 +153,12 @@ TEST_CASE("Point Tracker Unit Test")
     cv::Mat outImg1;
     imgProc.getImageWithDetectedFeatures(outImg1);
 
-    imgProc.setImage(frame2, 2*dt);
+    imgProc.setImage(frame2, 2 * dt);
     imgProc.advance();
 
     cv::Mat outImg2;
     imgProc.getImageWithDetectedFeatures(outImg2);
 
-//    cv::imshow("processed Frame 1", outImg1);
-//    cv::imshow("processed Frame 2", outImg2);
-//    cv::waitKey();
+    //     cv::imshow("processed Frame 1", outImg1);
+    //     cv::imshow("processed Frame 2", outImg2);
 }

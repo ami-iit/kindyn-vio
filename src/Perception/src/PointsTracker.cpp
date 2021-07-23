@@ -5,8 +5,8 @@
  * distributed under the terms of the GNU Lesser General Public License v2.1 or any later version.
  */
 
-#include <KinDynVIO/Perception/Features/PointsTracker.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
+#include <KinDynVIO/Perception/Features/PointsTracker.h>
 
 using namespace KinDynVIO::Perception;
 
@@ -18,8 +18,7 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
     const std::string printPrefix{"[PointsTracker::trackPoints]"};
     if (camera == nullptr)
     {
-        BipedalLocomotion::log()->error("{} Invalid pointer to camera model.",
-                                        printPrefix);
+        BipedalLocomotion::log()->error("{} Invalid pointer to camera model.", printPrefix);
         return false;
     }
 
@@ -31,10 +30,14 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
         // get forwarded points using optical flow based KLT tracker
         std::vector<uchar> status;
         std::vector<float> err;
-        cv::calcOpticalFlowPyrLK(prevImg, currImg,
-                                 prevPoints, forwardedPoints,
-                                 status, err,
-                                 searchWindowSize, maxPyramidLevel);
+        cv::calcOpticalFlowPyrLK(prevImg,
+                                 currImg,
+                                 prevPoints,
+                                 forwardedPoints,
+                                 status,
+                                 err,
+                                 searchWindowSize,
+                                 maxPyramidLevel);
 
         // set tracked features failing border check as untracked features
         for (std::size_t idx = 0; idx < forwardedPoints.size(); idx++)
@@ -68,19 +71,23 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
     auto nrNewFeatures = maxNrFeatures - forwardedPoints.size();
     if (nrNewFeatures > 0)
     {
-        if ( mask.empty() || (mask.type() != CV_8UC1) ||
-            (mask.size() != currImg.size()))
+        if (mask.empty() || (mask.type() != CV_8UC1) || (mask.size() != currImg.size()))
         {
-            cv::goodFeaturesToTrack(currImg, newPoints, nrNewFeatures,
-                                    detectionQuality, minDistanceBetweenFeatures);
-        }
-        else
+            cv::goodFeaturesToTrack(currImg,
+                                    newPoints,
+                                    nrNewFeatures,
+                                    detectionQuality,
+                                    minDistanceBetweenFeatures);
+        } else
         {
-            cv::goodFeaturesToTrack(currImg, newPoints, nrNewFeatures,
-                                    detectionQuality, minDistanceBetweenFeatures, mask);
+            cv::goodFeaturesToTrack(currImg,
+                                    newPoints,
+                                    nrNewFeatures,
+                                    detectionQuality,
+                                    minDistanceBetweenFeatures,
+                                    mask);
         }
-    }
-    else
+    } else
     {
         newPoints.clear();
     }
@@ -115,7 +122,13 @@ void PointsTracker::rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCam
         camera->unprojectPoints(undistForwPts, unForwPts);
 
         std::vector<uchar> inlierStatus;
-        cv::findEssentialMat(unPrevPts, unForwPts, camera->calibMat(), cv::RANSAC, probRANSAC, normalizedThresholdRANSAC, inlierStatus);
+        cv::findEssentialMat(unPrevPts,
+                             unForwPts,
+                             camera->calibMat(),
+                             cv::RANSAC,
+                             probRANSAC,
+                             normalizedThresholdRANSAC,
+                             inlierStatus);
 
         reduceVector(inlierStatus, prevPoints);
         reduceVector(inlierStatus, forwardedPoints);
@@ -128,21 +141,21 @@ void PointsTracker::setMask(std::shared_ptr<PinHoleCamera> camera)
 {
     mask = cv::Mat(camera->rows(), camera->cols(), CV_8UC1, cv::Scalar(255));
     // prefer to keep features that are tracked for long time
-    std::vector<std::pair<int, std::pair<cv::Point2f, int> > > countPointID;
+    std::vector<std::pair<int, std::pair<cv::Point2f, int>>> countPointID;
 
     for (std::size_t idx = 0; idx < forwardedPoints.size(); idx++)
     {
-        countPointID.emplace_back(std::make_pair(trackCount[idx],
-                                                 std::make_pair(forwardedPoints[idx], trackedIDs[idx])));
+        countPointID.emplace_back(
+            std::make_pair(trackCount[idx], std::make_pair(forwardedPoints[idx], trackedIDs[idx])));
     }
 
     // highly tracked feature goes to the top
-    std::sort(countPointID.begin(), countPointID.end(),
-              [](const std::pair<int, std::pair<cv::Point2f, int> > &a,
-                 const std::pair<int, std::pair<cv::Point2f, int>> &b)
-                {
-                    return a.first > b.first;
-                });
+    std::sort(countPointID.begin(),
+              countPointID.end(),
+              [](const std::pair<int, std::pair<cv::Point2f, int>>& a,
+                 const std::pair<int, std::pair<cv::Point2f, int>>& b) {
+                  return a.first > b.first;
+              });
 
     // clear and rearrange buffers
     forwardedPoints.clear();
@@ -162,4 +175,3 @@ void PointsTracker::setMask(std::shared_ptr<PinHoleCamera> camera)
         }
     }
 }
-
