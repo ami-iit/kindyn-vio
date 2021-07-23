@@ -7,4 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- The `CHANGELOG.md` file
+- Implement `PerceptionCameraModels` library containing `PinHoleCamera` class.
+- Implement `PerceptionFeatures` library containing `PointsTracker` class and `ImageProcessor` class.
+
