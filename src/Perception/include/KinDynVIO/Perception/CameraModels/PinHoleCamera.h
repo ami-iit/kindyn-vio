@@ -45,6 +45,8 @@ public:
                          std::vector<cv::Point2f>& imagePoints);
     void unprojectPoints(const std::vector<cv::Point2f>& uvs,
                          std::vector<cv::Point2f>& xcs);
+    void unprojectPoint(const cv::Point2f& uv,
+                        cv::Point2f& xc);
 
     const cv::Mat& calibMat() const;
     const Eigen::Matrix3d& K() const;

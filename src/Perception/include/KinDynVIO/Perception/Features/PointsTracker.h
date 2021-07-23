@@ -20,9 +20,10 @@ namespace Perception
 
 struct TrackedPoints
 {
-    std::vector<cv::Point2f> pts;
+    std::vector<cv::Point2f> uvs; // image points in pixels
     std::vector<long long int> ids;
     std::vector<long long int> counts;
+    std::vector<cv::Point2f> pts; // normalized coordinates after passing uvs through Kinv
 };
 
 /**
@@ -55,15 +56,22 @@ private:
     void rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCamera> camera);
     void setMask(std::shared_ptr<PinHoleCamera> camera);
 
+    // TODO expose these options as parameters
+    // detector parameters
+    double detectionQuality{0.1};
     std::size_t maxNrFeatures{1000};
-    double fastThreshold{10};
     int minDistanceBetweenFeatures{30}; // in pixels
+
+    // tracker parameters
     int maxPyramidLevel{3}; // 0-based levels of sub-image pyramids for KLT tracker
     cv::Size searchWindowSize{cv::Size(21, 21)}; // window size in pixels for KLT tracker
+
     int borderSize{1}; // image border size to check for interior tracked features
+
+    // RANSAC parameters for outlier removal
     double probRANSAC{0.99};
     double normalizedThresholdRANSAC{0.0003};
-    double detectionQuality{0.1};
+
 
     cv::Mat mask;
     std::vector<cv::Point2f> prevPoints;
@@ -71,7 +79,6 @@ private:
     std::vector<long long int> trackedIDs;
     std::vector<long long int> trackCount;
 
-    TrackedPoints out;
     long long int featureID{0};
 };
 
