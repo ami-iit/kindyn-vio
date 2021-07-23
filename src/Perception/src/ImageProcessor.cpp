@@ -5,10 +5,10 @@
  * distributed under the terms of the GNU Lesser General Public License v2.1 or any later version.
  */
 
+#include <BipedalLocomotion/System/Clock.h>
+#include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
-#include <BipedalLocomotion/TextLogging/Logger.h>
-#include <BipedalLocomotion/System/Clock.h>
 
 using namespace KinDynVIO::Perception;
 using namespace BipedalLocomotion::ParametersHandler;
@@ -25,7 +25,6 @@ struct TimeStampedImg
     double ts{-1.0};
     cv::Mat img;
 };
-
 
 class ImageProcessor::Impl
 {
@@ -50,9 +49,8 @@ public:
 };
 
 ImageProcessor::ImageProcessor()
-: m_pimpl(std::make_unique<ImageProcessor::Impl>())
+    : m_pimpl(std::make_unique<ImageProcessor::Impl>())
 {
-
 }
 
 ImageProcessor::~ImageProcessor()
@@ -66,7 +64,8 @@ bool ImageProcessor::initialize(std::weak_ptr<const IParametersHandler> handler)
     if (handle == nullptr)
     {
         BipedalLocomotion::log()->error("{} The parameter handler has expired. "
-                                        "Please check its scope.", printPrefix);
+                                        "Please check its scope.",
+                                        printPrefix);
         return false;
     }
 
@@ -77,18 +76,16 @@ bool ImageProcessor::initialize(std::weak_ptr<const IParametersHandler> handler)
         if (tracker == options[0])
         {
             m_pimpl->trackerType = TrackerType::POINTS;
-        }
-        else if (tracker == options[1])
+        } else if (tracker == options[1])
         {
             m_pimpl->trackerType = TrackerType::LINES;
-        }
-        else if (tracker == options[2])
+        } else if (tracker == options[2])
         {
             m_pimpl->trackerType = TrackerType::POINTS_AND_LINES;
-        }
-        else
+        } else
         {
-            std::cerr << printPrefix << "Setting the tracker type to default as \"points\"." << std::endl;
+            std::cerr << printPrefix << "Setting the tracker type to default as \"points\"."
+                      << std::endl;
         }
     }
 
@@ -106,8 +103,7 @@ bool ImageProcessor::setCameraModel(std::shared_ptr<PinHoleCamera> camera)
     const std::string printPrefix{"[ImageProcessor::setCameraModel]"};
     if (camera == nullptr)
     {
-        BipedalLocomotion::log()->error("{} Invalid pointer to camera model.",
-                                        printPrefix);
+        BipedalLocomotion::log()->error("{} Invalid pointer to camera model.", printPrefix);
         return false;
     }
 
@@ -128,12 +124,10 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
     if (img.channels() == 3)
     {
         cv::cvtColor(img, m_pimpl->currImg.img, cv::COLOR_RGB2GRAY);
-    }
-    else if (img.channels() == 4)
+    } else if (img.channels() == 4)
     {
         cv::cvtColor(img, m_pimpl->currImg.img, cv::COLOR_RGBA2GRAY);
-    }
-    else
+    } else
     {
         m_pimpl->currImg.img = img;
     }
@@ -148,7 +142,8 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
         {
             auto end = BipedalLocomotion::clock().now();
             BipedalLocomotion::log()->info("{} CLAHE took {} seconds.",
-                                           printPrefix, (end - begin).count());
+                                           printPrefix,
+                                           (end - begin).count());
         }
     }
 
@@ -177,7 +172,8 @@ bool ImageProcessor::advance()
         m_pimpl->prevImg = m_pimpl->currImg;
     }
 
-    if (m_pimpl->trackerType == TrackerType::POINTS || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    if (m_pimpl->trackerType == TrackerType::POINTS
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
         if (!m_pimpl->trackPoints())
         {
@@ -212,14 +208,18 @@ bool ImageProcessor::Impl::trackPoints()
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
     cv::cvtColor(m_pimpl->currImg.img, outImg, cv::COLOR_GRAY2RGB);
-    if (m_pimpl->trackerType == TrackerType::POINTS ||
-        m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    if (m_pimpl->trackerType == TrackerType::POINTS
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
         for (std::size_t jdx = 0; jdx < m_pimpl->trackedPoints.uvs.size(); jdx++)
         {
             const int windowSize = 10;
-            double len{std::min(1.0, 1.0*m_pimpl->trackedPoints.counts[jdx]/windowSize)};
-            cv::circle(outImg, m_pimpl->trackedPoints.uvs[jdx], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
+            double len{std::min(1.0, 1.0 * m_pimpl->trackedPoints.counts[jdx] / windowSize)};
+            cv::circle(outImg,
+                       m_pimpl->trackedPoints.pts[jdx],
+                       2,
+                       cv::Scalar(255 * (1 - len), 0, 255 * len),
+                       2);
         }
     }
     return true;

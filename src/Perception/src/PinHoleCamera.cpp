@@ -5,18 +5,21 @@
  * distributed under the terms of the GNU Lesser General Public License v2.1 or any later version.
  */
 
-#include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
+#include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 
 #include <opencv2/core/eigen.hpp>
-
 
 using namespace KinDynVIO::Perception;
 using namespace BipedalLocomotion::ParametersHandler;
 
-PinHoleCamera::PinHoleCamera() { }
+PinHoleCamera::PinHoleCamera()
+{
+}
 
-PinHoleCamera::~PinHoleCamera() { }
+PinHoleCamera::~PinHoleCamera()
+{
+}
 
 bool PinHoleCamera::initialize(std::weak_ptr<const IParametersHandler> handler)
 {
@@ -25,7 +28,8 @@ bool PinHoleCamera::initialize(std::weak_ptr<const IParametersHandler> handler)
     if (handle == nullptr)
     {
         BipedalLocomotion::log()->error("{} The parameter handler has expired. "
-                                        "Please check its scope.", printPrefix);
+                                        "Please check its scope.",
+                                        printPrefix);
         return false;
     }
 
@@ -38,7 +42,6 @@ bool PinHoleCamera::initialize(std::weak_ptr<const IParametersHandler> handler)
         return false;
     }
 
-
     m_K = Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>(calibVec.data());
     m_calibMat = cv::Mat(3, 3, CV_64F);
     cv::eigen2cv(m_K, m_calibMat);
@@ -47,10 +50,7 @@ bool PinHoleCamera::initialize(std::weak_ptr<const IParametersHandler> handler)
     const auto& fy{m_K(1, 1)};
     const auto& cx{m_K(0, 2)};
     const auto& cy{m_K(1, 2)};
-    m_Kinv << (1/fx),     0,  (-cx/fx),
-                   0, (1/fy), (-cy/fy),
-                   0,     0,         1;
-
+    m_Kinv << (1 / fx), 0, (-cx / fx), 0, (1 / fy), (-cy / fy), 0, 0, 1;
 
     if (!handle->getParameter("distortion_coefficients", m_d))
     {
@@ -103,8 +103,7 @@ void PinHoleCamera::undistortPoints(const std::vector<cv::Point2f>& corners,
     if (m_noDistortion)
     {
         imagePoints = corners;
-    }
-    else
+    } else
     {
         cv::undistortPoints(corners, imagePoints, m_calibMat, m_distCoeff);
     }
@@ -125,9 +124,9 @@ void PinHoleCamera::unprojectPoints(const std::vector<cv::Point2f>& uvs,
     for (const auto& uv : uvs)
     {
         cv::Point2f nPt;
-        nPt.x = (uv.x - cx)/fx;
-        nPt.y = (uv.y - cy)/fy;
-        // nPt.z = 1; // so we ignore it
+        nPt.x = (uv.x - cx) / fx;
+        nPt.y = (uv.y - cy) / fy;
+
         xcs.emplace_back(nPt);
     }
 }
