@@ -40,9 +40,9 @@ cmake --build . --config Release --target install
 
 - CMake structure of the repository is derived from the [`BipedalLocomotionFramework`](https://github.com/dic-iit/bipedal-locomotion-framework) project.
 
-- Perception related libraries are derived from open-source projects [`VINS-MONO`](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) and [`PL-VINS`](https://github.com/cnqiangfu/PL-VINS).
+- Perception related libraries are derived from open-source projects [`VINS-MONO`](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) and [`PL-VINS`](https://github.com/cnqiangfu/PL-VINS). It must be noted that these repositories are distributed under GPL v3, and since the classes `PointsTracker` and `LinesTracker` which are modified versions of the original source code, these classes are distributed under GPL v3 license as well, while the rest of our repository is distributed under LGPL license v3.0 or more.
 
-- Overall software architecture will be potentially derived from the [VILENS](https://ori.ox.ac.uk/labs/drs/vilens-tightly-fused-multi-sensor-odometry/) project from the DRS group in Oxford Research Institute.
+- Overall software architecture is inspired from the [VILENS](https://ori.ox.ac.uk/labs/drs/vilens-tightly-fused-multi-sensor-odometry/) project from the DRS group in Oxford Research Institute.
 
 
 
