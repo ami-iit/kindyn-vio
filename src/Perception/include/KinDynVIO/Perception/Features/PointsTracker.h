@@ -1,8 +1,14 @@
 /**
  * @file PointsTracker.h
  * @authors Prashanth Ramadoss
- * @copyright 2021 Istituto Italiano di Tecnologia (IIT). This software may be modified and
- * distributed under the terms of the GNU Lesser General Public License v2.1 or any later version.
+ * @copyright 2017 HKUST-Aerial-Robotics Group. This software may be modified and
+ * distributed under the terms of the GNU General Public License v3.0 (GPL-3.0 License) or any later version.
+ *
+ * This file is authored by:
+ *  (c) 2021 Prashanth Ramadoss @ DIC-IIT, Genova, Italy
+ *
+ *  adapted from the file `VINS-MONO/feature_tracker.cpp`:
+ *  (c) 2017 Tong QIN @ HKUST-Aerial-Robotics Group, Hong Kong
  */
 
 #ifndef KINDYNVIO_PERECEPTION_FEATURES_POINTS_TRACKER_H
@@ -28,6 +34,25 @@ struct TrackedPoints
 
 /**
  *  An Improvised version of VINS-MONO
+ *
+ *  If  you are using this piece of code, please cite the original papers
+ *  @inproceedings{qin2018online,
+ *  title={Online Temporal Calibration for Monocular Visual-Inertial Systems},
+ *  author={Qin, Tong and Shen, Shaojie},
+ *  booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+ *  pages={3662--3669},
+ *  year={2018},
+ *  organization={IEEE}
+ *  }
+ *  @article{qin2017vins,
+ *  title={VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator},
+ *  author={Qin, Tong and Li, Peiliang and Shen, Shaojie},
+ *  journal={IEEE Transactions on Robotics},
+ *  year={2018},
+ *  volume={34},
+ *  number={4},
+ *  pages={1004-1020}
+ *  }
  */
 class PointsTracker
 {
