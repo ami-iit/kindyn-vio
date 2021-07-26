@@ -57,6 +57,7 @@ jobs:
         mkdir -p build
         cd build
         cmake -GNinja -DGTSAM_USE_SYSTEM_EIGEN:BOOL=ON \
+              -DGTSAM_BUILD_TESTS:BOOL=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS:BOOL=OFF \
               -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
         cmake --build . --config ${{ matrix.build_type }} --target install
 
