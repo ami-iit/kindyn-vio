@@ -131,17 +131,15 @@ void PinHoleCamera::unprojectPoints(const std::vector<cv::Point2f>& uvs,
     }
 }
 
-void PinHoleCamera::unprojectPoint(const cv::Point2f& uv,
-                                   cv::Point2f& xc)
+void PinHoleCamera::unprojectPoint(const cv::Point2f& uv, cv::Point2f& xc)
 {
     const auto& fx{m_K(0, 0)};
     const auto& fy{m_K(1, 1)};
     const auto& cx{m_K(0, 2)};
     const auto& cy{m_K(1, 2)};
-    xc.x = (uv.x - cx)/fx;
-    xc.y = (uv.y - cy)/fy;
+    xc.x = (uv.x - cx) / fx;
+    xc.y = (uv.y - cy) / fy;
 }
-
 
 const cv::Mat& PinHoleCamera::calibMat() const
 {
