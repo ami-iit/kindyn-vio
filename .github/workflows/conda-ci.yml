@@ -56,7 +56,7 @@ jobs:
         cd gtsam
         mkdir -p build
         cd build
-        cmake -GNinja \
+        cmake -GNinja -DGTSAM_USE_SYSTEM_EIGEN:BOOL=ON \
               -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
         cmake --build . --config ${{ matrix.build_type }} --target install
 
