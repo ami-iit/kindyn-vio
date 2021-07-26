@@ -1,0 +1,163 @@
+name: C++ CI Workflow with conda-forge dependencies
+
+on:
+  push:
+  pull_request:
+  schedule:
+  # * is a special character in YAML so you have to quote this string
+  # Execute a "nightly" build at 2 AM UTC
+  - cron:  '0 2 * * *'
+
+env:
+  manif_TAG: 0.0.4
+  blf_TAG: v0.2.0
+
+jobs:
+  build:
+    name: '[${{ matrix.os }}@${{ matrix.build_type }}@conda]'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build_type: [Release]
+        os: [macos-latest]
+        #os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        mamba-version: "*"
+        channels: conda-forge,defaults
+        channel-priority: true
+
+    - name: Dependencies
+      shell: bash -l {0}
+      run: |
+        # Compilation related dependencies
+        mamba install cmake compilers make ninja pkg-config
+        # Actual dependencies
+        mamba install -c robotology idyntree eigen manif spdlog libmatio matio-cpp opencv pcl catch2 yarp nlohmann_json
+
+    #- name: Boost Dependency [Ubuntu]
+    #  if: contains(matrix.os, 'ubuntu')
+    #  shell: bash -l {0}
+    #  run: |
+    #    mamba install boost=1.58.0
+
+    #- name: Boost Dependency [Windows]
+    #  if: contains(matrix.os, 'windows')
+    #  shell: bash -l {0}
+    #  run: |
+    #    mamba install boost=1.67.0
+
+    - name: Boost Dependency [MacOS]
+      if: contains(matrix.os, 'macos')
+      shell: bash -l {0}
+      run: |
+        mamba install -c robotology boost
+
+    #- name: GTSAM Dependency [Source Based - Linux]
+    #  if: contains(matrix.os, 'ubuntu')
+    #   env:
+    #      BOOST_ROOT: ${{ steps.install-boost-windows.outputs.BOOST_ROOT }}
+    #  shell: bash -l {0}
+    #  run: |
+    #    # GTSAM
+    #    cd ${GITHUB_WORKSPACE}
+    #    git clone https://github.com/borglab/gtsam
+    #    cd gtsam
+    #    mkdir -p build
+    #    cd build
+    #    cmake -GNinja \
+    #          -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
+    #    cmake --build . --config ${{ matrix.build_type }} --target install
+
+    - name: GTSAM Dependency [Source Based - MacOS]
+      if: contains(matrix.os, 'macos')
+      shell: bash -l {0}
+      run: |
+        # GTSAM
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/borglab/gtsam
+        cd gtsam
+        mkdir -p build
+        cd build
+        cmake -GNinja \
+              -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
+        cmake --build . --config ${{ matrix.build_type }} --target install
+
+    - name: Dependencies [Source Based - MacOS]
+      if: contains(matrix.os, 'macos')
+    #  if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
+      shell: bash -l {0}
+      run: |
+        # bipedal-locomotion-framework
+        cd ${GITHUB_WORKSPACE}
+        git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+        cd bipedal-locomotion-framework
+        mkdir -p build
+        cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
+        cmake --build . --config ${{ matrix.build_type }} --target install
+
+    #- name: Dependencies [Source Based - windows]
+    #  if: contains(matrix.os, 'windows')
+    #  env:
+    #      BOOST_ROOT: ${{ steps.install-boost-windows.outputs.BOOST_ROOT }}
+    #  shell: bash -l {0}
+    #  run: |
+    #    # GTSAM
+    #    cd ${GITHUB_WORKSPACE}
+    #    git clone https://github.com/borglab/gtsam
+    #    cd gtsam
+    #    mkdir -p build
+    #    cd build
+    #    cmake -G"Visual Studio 16 2019" \
+    #          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+    #          -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library  ..
+    #    cmake --build . --config ${{ matrix.build_type }} --target install
+
+    #    # bipedal-locomotion-framework
+    #    cd ${GITHUB_WORKSPACE}
+    #    git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+    #    cd bipedal-locomotion-framework
+    #    mkdir -p build
+    #    cd build
+    #    cmake -G"Visual Studio 16 2019" \
+    #          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+    #          -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library ..
+    #    cmake --build . --config ${{ matrix.build_type }} --target install
+
+    - name: Configure [MacOS]
+      if: contains(matrix.os, 'macos')
+   #   if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
+      shell: bash -l {0}
+      run: |
+        mkdir -p build
+        cd build
+        cmake -GNinja -DBUILD_TESTING:BOOL=ON \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+
+    #- name: Configure [Windows]
+    #  if: contains(matrix.os, 'windows')
+    #  shell: bash -l {0}
+    #  run: |
+    #    mkdir -p build
+    #    cd build
+    #    cmake -G"Visual Studio 16 2019" -DBUILD_TESTING:BOOL=ON \
+    #          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        cd build
+        cmake --build . --config ${{ matrix.build_type }}
+
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        cd build
+        ctest --output-on-failure -C ${{ matrix.build_type }}
+
