@@ -1,4 +1,5 @@
-# KinDynVIO: A Multimodal Sensor Fusion Framework for Whole Body Estimation of a Humanoid Robot
+# KinDynVIO: A Multimodal Sensor Fusion Framework for Whole Body Estimation of a Humanoid Robot ![C++ CI Workflow](https://github.com/dic-iit/kindyn-vio/actions/workflows/conda-ci.yml/badge.svg)
+
 
 <p align="center">
   <b>:warning: REPOSITORY UNDER DEVELOPMENT :warning:</b>
