@@ -19,8 +19,8 @@ jobs:
     strategy:
       matrix:
         build_type: [Release]
-        os: [macos-latest]
-        #os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
+        #os: [ windows-latest, macos-latest]
       fail-fast: false
 
     steps:
@@ -38,13 +38,7 @@ jobs:
         # Compilation related dependencies
         mamba install cmake compilers make ninja pkg-config
         # Actual dependencies
-        mamba install -c robotology idyntree eigen manif spdlog libmatio matio-cpp opencv pcl catch2 yarp nlohmann_json
-
-    #- name: Boost Dependency [Ubuntu]
-    #  if: contains(matrix.os, 'ubuntu')
-    #  shell: bash -l {0}
-    #  run: |
-    #    mamba install boost=1.58.0
+        mamba install -c conda-forge -c robotology idyntree eigen manif spdlog libmatio matio-cpp opencv pcl catch2 yarp nlohmann_json boost
 
     #- name: Boost Dependency [Windows]
     #  if: contains(matrix.os, 'windows')
@@ -52,30 +46,8 @@ jobs:
     #  run: |
     #    mamba install boost=1.67.0
 
-    - name: Boost Dependency [MacOS]
-      if: contains(matrix.os, 'macos')
-      shell: bash -l {0}
-      run: |
-        mamba install -c robotology boost
-
-    #- name: GTSAM Dependency [Source Based - Linux]
-    #  if: contains(matrix.os, 'ubuntu')
-    #   env:
-    #      BOOST_ROOT: ${{ steps.install-boost-windows.outputs.BOOST_ROOT }}
-    #  shell: bash -l {0}
-    #  run: |
-    #    # GTSAM
-    #    cd ${GITHUB_WORKSPACE}
-    #    git clone https://github.com/borglab/gtsam
-    #    cd gtsam
-    #    mkdir -p build
-    #    cd build
-    #    cmake -GNinja \
-    #          -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
-    #    cmake --build . --config ${{ matrix.build_type }} --target install
-
-    - name: GTSAM Dependency [Source Based - MacOS]
-      if: contains(matrix.os, 'macos')
+    - name: GTSAM Dependency [Source Based - MacOS & Linux]
+      if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
       shell: bash -l {0}
       run: |
         # GTSAM
@@ -88,9 +60,8 @@ jobs:
               -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
         cmake --build . --config ${{ matrix.build_type }} --target install
 
-    - name: Dependencies [Source Based - MacOS]
-      if: contains(matrix.os, 'macos')
-    #  if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
+    - name: Dependencies [Source Based - MacOS & Linux]
+      if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
       shell: bash -l {0}
       run: |
         # bipedal-locomotion-framework
@@ -130,9 +101,8 @@ jobs:
     #          -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}/Library ..
     #    cmake --build . --config ${{ matrix.build_type }} --target install
 
-    - name: Configure [MacOS]
-      if: contains(matrix.os, 'macos')
-   #   if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
+    - name: Configure [MacOS & Linux]
+      if: contains(matrix.os, 'macos') || contains(matrix.os, 'ubuntu')
       shell: bash -l {0}
       run: |
         mkdir -p build
