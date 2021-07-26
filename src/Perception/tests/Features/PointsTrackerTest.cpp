@@ -59,6 +59,9 @@ TEST_CASE("Point Tracker Unit Test")
     std::string frame2Path{getCameraFrame2()};
     auto frame2 = cv::imread(frame2Path);
 
+    std::string frame3Path{getCameraFrame3()};
+    auto frame3 = cv::imread(frame3Path);
+
     auto camera = getCamera(frame1.rows, frame1.cols);
 
     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
@@ -69,18 +72,26 @@ TEST_CASE("Point Tracker Unit Test")
     ImageProcessor imgProc;
     REQUIRE(imgProc.initialize(parameterHandler));
     REQUIRE(imgProc.setCameraModel(camera));
-    imgProc.setImage(frame1, dt);
+
+    cv::Mat outImg;
+    for (auto idx = 0; idx < 10; idx++)
+    {
+        if (idx % 2 == 0)
+        {
+            imgProc.setImage(frame1, idx * dt);
+        } else
+        {
+            imgProc.setImage(frame2, idx * dt);
+        }
+        REQUIRE(imgProc.advance());
+        imgProc.getImageWithDetectedFeatures(outImg);
+        //cv::imshow("processed Frame", outImg);
+        //cv::waitKey(1000);
+    }
+
+    imgProc.setImage(frame3, 10 * dt);
     REQUIRE(imgProc.advance());
-
-    cv::Mat outImg1;
-    imgProc.getImageWithDetectedFeatures(outImg1);
-
-    imgProc.setImage(frame2, 2 * dt);
-    REQUIRE(imgProc.advance());
-
-    cv::Mat outImg2;
-    imgProc.getImageWithDetectedFeatures(outImg2);
-
-    //     cv::imshow("processed Frame 1", outImg1);
-    //     cv::imshow("processed Frame 2", outImg2);
+    imgProc.getImageWithDetectedFeatures(outImg);
+    //cv::imshow("processed Frame", outImg);
+    //cv::waitKey();
 }

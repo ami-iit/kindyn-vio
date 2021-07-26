@@ -8,6 +8,7 @@
 #include <BipedalLocomotion/System/Clock.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
+//#include <KinDynVIO/Perception/Features/LinesTracker.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
 
 using namespace KinDynVIO::Perception;
@@ -30,6 +31,9 @@ class ImageProcessor::Impl
 {
 public:
     bool trackPoints();
+    //bool trackLines();
+
+    void drawPoints(const cv::Mat& img, const TrackedPoints& points, const bool& printMetaData);
 
     bool initialized{false};
     bool debug{true};
@@ -44,6 +48,9 @@ public:
 
     PointsTracker ptsTracker;
     TrackedPoints trackedPoints;
+
+    //LinesTracker linesTracker;
+    //TrackedLines trackedLines;
 
     std::shared_ptr<PinHoleCamera> camera{nullptr};
 };
@@ -182,6 +189,16 @@ bool ImageProcessor::advance()
         }
     }
 
+    //if (m_pimpl->trackerType == TrackerType::LINES
+    //    || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    //{
+    //    if (!m_pimpl->trackLines())
+    //    {
+    //        BipedalLocomotion::log()->error("{} Failed to track line features.", printPrefix);
+    //        return false;
+    //    }
+    //}
+
     m_pimpl->prevImg = m_pimpl->currImg;
 
     return true;
@@ -200,10 +217,30 @@ bool ImageProcessor::Impl::trackPoints()
     {
         auto end = BipedalLocomotion::clock().now();
         BipedalLocomotion::log()->info("{} Tracking point features took {} seconds.",
-                                        printPrefix, (end - begin).count());
+                                       printPrefix,
+                                       (end - begin).count());
     }
     return true;
 }
+
+// bool ImageProcessor::Impl::trackLines()
+// {
+//     std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
+//     auto begin = BipedalLocomotion::clock().now();
+//     if (!linesTracker.trackLines(camera, currImg.img, trackedLines))
+//     {
+//         return false;
+//     }
+//
+//     if (debug)
+//     {
+//         auto end = BipedalLocomotion::clock().now();
+//         BipedalLocomotion::log()->info("{} Tracking line features took {} seconds.",
+//                                        printPrefix,
+//                                        (end - begin).count());
+//     }
+//     return true;
+// }
 
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
@@ -211,16 +248,48 @@ bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
     if (m_pimpl->trackerType == TrackerType::POINTS
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
-        for (std::size_t jdx = 0; jdx < m_pimpl->trackedPoints.uvs.size(); jdx++)
+        m_pimpl->drawPoints(outImg, m_pimpl->trackedPoints, m_pimpl->debug);
+    }
+
+    if (m_pimpl->trackerType == TrackerType::LINES
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    {
+    }
+
+    return true;
+}
+
+void ImageProcessor::Impl::drawPoints(const cv::Mat& img,
+                                      const TrackedPoints& points,
+                                      const bool& printMetaData)
+{
+    const int windowSize{10};
+    const int radius{2};
+    const int thickness{2};
+    for (std::size_t jdx = 0; jdx < points.uvs.size(); jdx++)
+    {
+
+        double len{std::min(1.0, 1.0 * points.counts[jdx] / windowSize)};
+        cv::circle(img,
+                   points.uvs[jdx],
+                   radius,
+                   cv::Scalar(255 * (1 - len), 0, 255 * len),
+                   thickness);
+
+        if (printMetaData)
         {
-            const int windowSize = 10;
-            double len{std::min(1.0, 1.0 * m_pimpl->trackedPoints.counts[jdx] / windowSize)};
-            cv::circle(outImg,
-                       m_pimpl->trackedPoints.pts[jdx],
-                       2,
-                       cv::Scalar(255 * (1 - len), 0, 255 * len),
-                       2);
+            double fontScale{0.35};
+            // add text - feature ID and track count
+            auto font = cv::FONT_HERSHEY_SIMPLEX;
+            std::string id{"PID/C: " + std::to_string(points.ids[jdx]) + ", "
+                           + std::to_string(points.counts[jdx])};
+
+            cv::putText(img,
+                        id,
+                        points.uvs[jdx] + cv::Point2f(2, 0),
+                        font,
+                        fontScale,
+                        cv::Scalar(0, 255 * (1 - len), 255 * (len)));
         }
     }
-    return true;
 }

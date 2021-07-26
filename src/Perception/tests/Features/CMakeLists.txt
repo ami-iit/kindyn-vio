@@ -12,6 +12,11 @@ add_kindyn_vio_test(
  NAME PointsTracker
  SOURCES PointsTrackerTest.cpp
  LINKS KinDynVIO::PerceptionFeatures BipedalLocomotion::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler Eigen3::Eigen iDynTree::idyntree-core)
+ 
+add_kindyn_vio_test(
+ NAME LinesTracker
+ SOURCES LinesTrackerTest.cpp
+ LINKS KinDynVIO::PerceptionFeatures BipedalLocomotion::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler Eigen3::Eigen iDynTree::idyntree-core)
 
 add_kindyn_vio_test(
  NAME ArucoDetectorExample

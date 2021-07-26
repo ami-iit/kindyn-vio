@@ -83,28 +83,28 @@ private:
 
     // TODO expose these options as parameters
     // detector parameters
-    double detectionQuality{0.1};
-    std::size_t maxNrFeatures{1000};
-    int minDistanceBetweenFeatures{30}; // in pixels
+    double m_detectionQuality{0.1};
+    std::size_t m_maxNrFeatures{1000};
+    int m_minDistanceBetweenFeatures{30}; // in pixels
 
     // tracker parameters
-    int maxPyramidLevel{3}; // 0-based levels of sub-image pyramids for KLT tracker
-    cv::Size searchWindowSize{cv::Size(21, 21)}; // window size in pixels for KLT tracker
+    int m_maxPyramidLevel{3}; // 0-based levels of sub-image pyramids for KLT tracker
+    cv::Size m_searchWindowSize{cv::Size(21, 21)}; // window size in pixels for KLT tracker
 
-    int borderSize{1}; // image border size to check for interior tracked features
+    int m_borderSize{1}; // image border size to check for interior tracked features
 
     // RANSAC parameters for outlier removal
-    double probRANSAC{0.99};
-    double normalizedThresholdRANSAC{0.0003};
+    double m_probRANSAC{0.99};
+    double m_normalizedThresholdRANSAC{0.0003};
 
 
-    cv::Mat mask;
-    std::vector<cv::Point2f> prevPoints;
-    std::vector<cv::Point2f> newPoints, forwardedPoints;
-    std::vector<long long int> trackedIDs;
-    std::vector<long long int> trackCount;
+    cv::Mat m_mask;
+    std::vector<cv::Point2f> m_prevPoints;
+    std::vector<cv::Point2f> m_newPoints, m_forwardedPoints;
+    std::vector<long long int> m_trackedIDs;
+    std::vector<long long int> m_trackCount;
 
-    long long int featureID{0};
+    long long int m_featureID{0};
 };
 
 } // namespace Perception
