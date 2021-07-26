@@ -69,7 +69,7 @@ private:
         std::size_t jdx{0};
         for (std::size_t idx = 0; idx < v.size(); idx++)
         {
-            if (status[idx])
+            if (static_cast<int>(status[idx]))
             {
                 v[jdx++] = v[idx]; // places active features in the front of the vector
             }
@@ -81,15 +81,26 @@ private:
     void rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCamera> camera);
     void setMask(std::shared_ptr<PinHoleCamera> camera);
 
+    // NOTE: IMPORTANT PARAMETERS TO TUNE
+    // In case the tracking quality seems poor,
+    // then reduce the min distance between features so that
+    // more features are detected in such a way that
+    // RANSAC can eliminate most outliers that did not
+    // correspond to an equivalent rigid body motion of the camera
+    // Additionally, the detection quality is helpful
+    // but might not be useful in texture-less images
+    // higher the number of pyramids, higher the tracking performance
+    // since we keep reducing the resolution of the tracked features
+    // however, more pyramids is time-expensive
     // TODO expose these options as parameters
     // detector parameters
-    double m_detectionQuality{0.1};
+    double m_detectionQuality{0.75};
     std::size_t m_maxNrFeatures{1000};
-    int m_minDistanceBetweenFeatures{30}; // in pixels
+    int m_minDistanceBetweenFeatures{20}; // in pixels
 
     // tracker parameters
-    int m_maxPyramidLevel{3}; // 0-based levels of sub-image pyramids for KLT tracker
-    cv::Size m_searchWindowSize{cv::Size(21, 21)}; // window size in pixels for KLT tracker
+    int m_maxPyramidLevel{4}; // 0-based levels of sub-image pyramids for KLT tracker
+    cv::Size m_searchWindowSize{cv::Size(15, 15)}; // window size in pixels for KLT tracker
 
     int m_borderSize{1}; // image border size to check for interior tracked features
 

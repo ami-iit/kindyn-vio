@@ -176,7 +176,10 @@ bool ImageProcessor::advance()
     if (m_pimpl->prevImg.img.empty())
     {
         // this is the first image
-        m_pimpl->prevImg = m_pimpl->currImg;
+        m_pimpl->prevImg.img = cv::Mat(m_pimpl->camera->rows(),
+                                       m_pimpl->camera->cols(),
+                                       CV_8UC1,
+                                       cv::Scalar(0));
     }
 
     if (m_pimpl->trackerType == TrackerType::POINTS
@@ -199,7 +202,8 @@ bool ImageProcessor::advance()
     //    }
     //}
 
-    m_pimpl->prevImg = m_pimpl->currImg;
+    m_pimpl->currImg.img.copyTo(m_pimpl->prevImg.img);
+    m_pimpl->prevImg.ts = m_pimpl->currImg.ts;
 
     return true;
 }
@@ -208,6 +212,7 @@ bool ImageProcessor::Impl::trackPoints()
 {
     std::string printPrefix{"[ImageProcessor::Impl::trackPoints]"};
     auto begin = BipedalLocomotion::clock().now();
+
     if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, trackedPoints))
     {
         return false;

@@ -83,10 +83,12 @@ TEST_CASE("Point Tracker Unit Test")
         {
             imgProc.setImage(frame2, idx * dt);
         }
+        std::cout << "===========================" << std::endl;
+        std::cout << "Iter:"<< idx << std::endl;
         REQUIRE(imgProc.advance());
         imgProc.getImageWithDetectedFeatures(outImg);
         //cv::imshow("processed Frame", outImg);
-        //cv::waitKey(1000);
+        //cv::waitKey();
     }
 
     imgProc.setImage(frame3, 10 * dt);

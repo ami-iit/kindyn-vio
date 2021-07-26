@@ -45,14 +45,13 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
                                  err,
                                  m_searchWindowSize,
                                  m_maxPyramidLevel);
-
         // set tracked features failing border check as untracked features
         for (std::size_t idx = 0; idx < m_forwardedPoints.size(); idx++)
         {
             const auto& pt = m_forwardedPoints[idx];
-            if (!status[idx] || !camera->inBorder(pt, m_borderSize))
+            if (static_cast<int>(status[idx]) && !camera->inBorder(pt, m_borderSize))
             {
-                status[idx] = 0;
+                status[idx] = static_cast<uchar>(0);
             }
         }
 
