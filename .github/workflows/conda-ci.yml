@@ -38,7 +38,7 @@ jobs:
         # Compilation related dependencies
         mamba install cmake compilers make ninja pkg-config
         # Actual dependencies
-        mamba install -c conda-forge -c robotology idyntree eigen manif spdlog libmatio matio-cpp opencv pcl catch2 yarp nlohmann_json boost
+        mamba install -c conda-forge -c robotology idyntree eigen manif spdlog libmatio matio-cpp opencv pcl catch2 yarp nlohmann_json boost-cpp
 
     #- name: Boost Dependency [Windows]
     #  if: contains(matrix.os, 'windows')
