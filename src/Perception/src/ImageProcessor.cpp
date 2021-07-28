@@ -286,7 +286,7 @@ void ImageProcessor::Impl::drawPoints(const cv::Mat& img,
             double fontScale{0.35};
             // add text - feature ID and track count
             auto font = cv::FONT_HERSHEY_SIMPLEX;
-            std::string id{"PID/C: " + std::to_string(points.ids[jdx]) + ", "
+            std::string id{"P" + std::to_string(points.ids[jdx]) + ", "
                            + std::to_string(points.counts[jdx])};
 
             cv::putText(img,

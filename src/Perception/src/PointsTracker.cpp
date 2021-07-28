@@ -35,8 +35,8 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
     if (m_prevPoints.size() > 0)
     {
         // get forwarded points using optical flow based KLT tracker
-        std::vector<uchar> status;
-        std::vector<float> err;
+        std::vector<uchar> status, statusReverse;
+        std::vector<float> err, errReverse;
         cv::calcOpticalFlowPyrLK(prevImg,
                                  currImg,
                                  m_prevPoints,
@@ -45,6 +45,28 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
                                  err,
                                  m_searchWindowSize,
                                  m_maxPyramidLevel);
+        std::vector<cv::Point2f> prevPointsReverse;
+        cv::calcOpticalFlowPyrLK(currImg,
+                                 prevImg,
+                                 m_forwardedPoints,
+                                 prevPointsReverse,
+                                 statusReverse,
+                                 errReverse,
+                                 m_searchWindowSize,
+                                 m_maxPyramidLevel);
+
+        // if reverse optical flow from forwarded points
+        // do not match the previous points, then mark the point as untracked
+        for (std::size_t idx = 0; idx < m_prevPoints.size(); idx++)
+        {
+            const auto& p1 = m_prevPoints[idx];
+            const auto& p2 = prevPointsReverse[idx];
+            if (std::abs(p1.x - p2.x) > 1 || std::abs(p1.y - p2.y) > 1)
+            {
+                status[idx] = static_cast<uchar>(0);
+            }
+        }
+
         // set tracked features failing border check as untracked features
         for (std::size_t idx = 0; idx < m_forwardedPoints.size(); idx++)
         {
