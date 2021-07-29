@@ -1,0 +1,26 @@
+/**
+ * @file ResourceFolderPath.h(.in)
+ * @authors Stefano Dafarra
+ * @copyright 2021 Istituto Italiano di Tecnologia (IIT). This software may be modified and
+ * distributed under the terms of the GNU Lesser General Public License v2.1 or any later version.
+ */
+
+#ifndef RESOURCE_FOLDERPATH_H_IN
+#define RESOURCE_FOLDERPATH_H_IN
+
+#include <string>
+
+#define SOURCE_CONFIG_DIR "@CMAKE_CURRENT_SOURCE_DIR@"
+
+inline std::string getiCubURDFModelPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/data/model.urdf";
+}
+
+inline std::string getTestDatasetPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/data/sync-walk-est.mat";
+}
+
+#endif // RESOURCE_FOLDERPATH_H_IN
+
