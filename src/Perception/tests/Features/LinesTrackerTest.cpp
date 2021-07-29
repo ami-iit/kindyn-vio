@@ -51,7 +51,7 @@ std::shared_ptr<PinHoleCamera> getCamera(int row, int col)
     return camera;
 }
 
-TEST_CASE("Point Tracker Unit Test")
+TEST_CASE("Lines Tracker Unit Test")
 {
     std::string frame1Path{getCameraFrame1()};
     auto frame1 = cv::imread(frame1Path);
@@ -65,13 +65,15 @@ TEST_CASE("Point Tracker Unit Test")
     auto camera = getCamera(frame1.rows, frame1.cols);
 
     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
-    parameterHandler->setParameter("tracker_type", "points");
+    parameterHandler->setParameter("tracker_type", "lines");
     parameterHandler->setParameter("equalize_image", false);
     parameterHandler->setParameter("debug", true);
 
     ImageProcessor imgProc;
     REQUIRE(imgProc.initialize(parameterHandler));
     REQUIRE(imgProc.setCameraModel(camera));
+    imgProc.setImage(frame1, dt);
+    REQUIRE(imgProc.advance());
 
     cv::Mat outImg;
     for (auto idx = 0; idx < 10; idx++)
@@ -84,7 +86,7 @@ TEST_CASE("Point Tracker Unit Test")
             imgProc.setImage(frame2, idx * dt);
         }
         std::cout << "===========================" << std::endl;
-        std::cout << "Iter:"<< idx << std::endl;
+        std::cout << "Iter:" << idx << std::endl;
         REQUIRE(imgProc.advance());
         imgProc.getImageWithDetectedFeatures(outImg);
         //cv::imshow("processed Frame", outImg);

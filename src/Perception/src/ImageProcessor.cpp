@@ -8,6 +8,7 @@
 #include <BipedalLocomotion/System/Clock.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
+#include <KinDynVIO/Perception/Features/LinesTracker.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
 
 using namespace KinDynVIO::Perception;
@@ -30,20 +31,46 @@ class ImageProcessor::Impl
 {
 public:
     bool trackPoints();
+    bool trackLines();
+
+    void drawPoints(const cv::Mat& img,
+                    const TrackedPoints2D& points,
+                    const bool& printMetaDataconst,
+                    const int& windowSize = 10,
+                    const int& radius = 2,
+                    const int& thickness = 2,
+                    const double& fontScale = 0.35);
+    void drawLines(const cv::Mat& img,
+                   const TrackedLines2D& trackedLines,
+                   const bool& printMetaData,
+                   const int& windowSize = 10,
+                   const int& thickness = 2,
+                   const double& fontScale = 0.35);
 
     bool initialized{false};
     bool debug{true};
     bool equalizeImg{true};
     TrackerType trackerType{TrackerType::POINTS};
 
+    // CLAHE parameters
     cv::Ptr<cv::CLAHE> clahe;
     double claheClipLimit{3.0}; // CLAHE threshold for contrast limiting
     cv::Size claheTileSize{cv::Size(8, 8)};
 
+    // drawing parameters
+    int drawnTrackedFeatureWindowSize{10}; // size required to interpolate feature color from B/G to
+                                           // R
+    int drawnFeatureRadius{2}; // radius for drawn point features in pixels
+    int drawnFeatureThickness{2}; // thickness of drawn features in pixels
+    double drawnFontScale{0.35}; // font scale for accompanying text
+
     TimeStampedImg currImg, prevImg;
 
     PointsTracker ptsTracker;
-    TrackedPoints trackedPoints;
+    TrackedPoints2D trackedPoints;
+
+    LinesTracker linesTracker;
+    TrackedLines2D trackedLines;
 
     std::shared_ptr<PinHoleCamera> camera{nullptr};
 };
@@ -93,6 +120,11 @@ bool ImageProcessor::initialize(std::weak_ptr<const IParametersHandler> handler)
     m_pimpl->clahe = cv::createCLAHE(m_pimpl->claheClipLimit, m_pimpl->claheTileSize);
 
     handle->getParameter("debug", m_pimpl->debug);
+    handle->getParameter("drawn_tracked_feature_window_size",
+                         m_pimpl->drawnTrackedFeatureWindowSize);
+    handle->getParameter("drawn_feature_radius", m_pimpl->drawnFeatureRadius);
+    handle->getParameter("drawn_feature_thickness", m_pimpl->drawnFeatureThickness);
+    handle->getParameter("drawn_font_scale", m_pimpl->drawnFontScale);
 
     m_pimpl->initialized = true;
     return true;
@@ -169,7 +201,8 @@ bool ImageProcessor::advance()
     if (m_pimpl->prevImg.img.empty())
     {
         // this is the first image
-        m_pimpl->prevImg = m_pimpl->currImg;
+        m_pimpl->prevImg.img
+            = cv::Mat(m_pimpl->camera->rows(), m_pimpl->camera->cols(), CV_8UC1, cv::Scalar(0));
     }
 
     if (m_pimpl->trackerType == TrackerType::POINTS
@@ -182,7 +215,18 @@ bool ImageProcessor::advance()
         }
     }
 
-    m_pimpl->prevImg = m_pimpl->currImg;
+    if (m_pimpl->trackerType == TrackerType::LINES
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    {
+        if (!m_pimpl->trackLines())
+        {
+            BipedalLocomotion::log()->error("{} Failed to track line features.", printPrefix);
+            return false;
+        }
+    }
+
+    m_pimpl->currImg.img.copyTo(m_pimpl->prevImg.img);
+    m_pimpl->prevImg.ts = m_pimpl->currImg.ts;
 
     return true;
 }
@@ -191,6 +235,7 @@ bool ImageProcessor::Impl::trackPoints()
 {
     std::string printPrefix{"[ImageProcessor::Impl::trackPoints]"};
     auto begin = BipedalLocomotion::clock().now();
+
     if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, trackedPoints))
     {
         return false;
@@ -200,7 +245,27 @@ bool ImageProcessor::Impl::trackPoints()
     {
         auto end = BipedalLocomotion::clock().now();
         BipedalLocomotion::log()->info("{} Tracking point features took {} seconds.",
-                                        printPrefix, (end - begin).count());
+                                       printPrefix,
+                                       (end - begin).count());
+    }
+    return true;
+}
+
+bool ImageProcessor::Impl::trackLines()
+{
+    std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
+    auto begin = BipedalLocomotion::clock().now();
+    if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, trackedLines))
+    {
+        return false;
+    }
+
+    if (debug)
+    {
+        auto end = BipedalLocomotion::clock().now();
+        BipedalLocomotion::log()->info("{} Tracking line features took {} seconds.",
+                                       printPrefix,
+                                       (end - begin).count());
     }
     return true;
 }
@@ -211,16 +276,83 @@ bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
     if (m_pimpl->trackerType == TrackerType::POINTS
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
-        for (std::size_t jdx = 0; jdx < m_pimpl->trackedPoints.uvs.size(); jdx++)
+        m_pimpl->drawPoints(outImg,
+                            m_pimpl->trackedPoints,
+                            m_pimpl->debug,
+                            m_pimpl->drawnTrackedFeatureWindowSize,
+                            m_pimpl->drawnFeatureRadius,
+                            m_pimpl->drawnFeatureThickness,
+                            m_pimpl->drawnFontScale);
+    }
+
+    if (m_pimpl->trackerType == TrackerType::LINES
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    {
+        m_pimpl->drawLines(outImg,
+                           m_pimpl->trackedLines,
+                           m_pimpl->debug,
+                           m_pimpl->drawnTrackedFeatureWindowSize,
+                           m_pimpl->drawnFeatureThickness,
+                           m_pimpl->drawnFontScale);
+    }
+
+    return true;
+}
+
+void ImageProcessor::Impl::drawPoints(const cv::Mat& img,
+                                      const TrackedPoints2D& points,
+                                      const bool& printMetaData = true,
+                                      const int& windowSize,
+                                      const int& radius,
+                                      const int& thickness,
+                                      const double& fontScale)
+{
+    for (std::size_t jdx = 0; jdx < points.uvs.size(); jdx++)
+    {
+        double len{std::min(1.0, 1.0 * points.counts[jdx] / windowSize)};
+        auto blue2red = cv::Scalar(255 * (1 - len), 0, 255 * len);
+        cv::circle(img, points.uvs[jdx], radius, blue2red, thickness);
+
+        if (printMetaData)
         {
-            const int windowSize = 10;
-            double len{std::min(1.0, 1.0 * m_pimpl->trackedPoints.counts[jdx] / windowSize)};
-            cv::circle(outImg,
-                       m_pimpl->trackedPoints.pts[jdx],
-                       2,
-                       cv::Scalar(255 * (1 - len), 0, 255 * len),
-                       2);
+            // add text - feature ID and track count
+            auto font = cv::FONT_HERSHEY_SIMPLEX;
+            std::string id{"P" + std::to_string(points.ids[jdx]) + ", "
+                           + std::to_string(points.counts[jdx])};
+
+            cv::putText(img, id, points.uvs[jdx] + cv::Point2f(2, 0), font, fontScale, blue2red);
         }
     }
-    return true;
+}
+
+void ImageProcessor::Impl::drawLines(const cv::Mat& img,
+                                     const TrackedLines2D& trackedLines,
+                                     const bool& printMetaData,
+                                     const int& windowSize,
+                                     const int& thickness,
+                                     const double& fontScale)
+{
+    const auto& nrLines = trackedLines.lines.size();
+    for (std::size_t jdx = 0; jdx < nrLines; jdx++)
+    {
+        const auto& line = trackedLines.lines[jdx];
+        double len{std::min(1.0, 1.0 * trackedLines.counts[jdx] / windowSize)};
+        auto green2red = cv::Scalar(0, 255 * (1 - len), 255 * (len));
+        cv::line(img, line.startPixelCoord, line.endPixelCoord, green2red, thickness);
+
+        if (printMetaData)
+        {
+            // add text - feature ID and track count
+            auto font = cv::FONT_HERSHEY_SIMPLEX;
+            std::string id{"L" + std::to_string(trackedLines.ids[jdx]) + ", "
+                           + std::to_string(trackedLines.counts[jdx])};
+
+            cv::putText(img,
+                        id,
+                        line.startPixelCoord - cv::Point2f(10, 2),
+                        font,
+                        fontScale,
+                        green2red);
+        }
+    }
 }

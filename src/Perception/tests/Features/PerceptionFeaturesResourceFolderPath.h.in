@@ -22,5 +22,11 @@ inline std::string getCameraFrame2()
     return std::string(SOURCE_CONFIG_DIR) + "/data/Frame2.jpg";
 }
 
+inline std::string getCameraFrame3()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/data/Frame3.jpg";
+}
+
+
 #endif // PERCEPTION_FEATURES_RESOURCE_FOLDERPATH_H_IN
 

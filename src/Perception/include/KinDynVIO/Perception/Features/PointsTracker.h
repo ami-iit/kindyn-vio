@@ -24,7 +24,7 @@ namespace KinDynVIO
 namespace Perception
 {
 
-struct TrackedPoints
+struct TrackedPoints2D
 {
     std::vector<cv::Point2f> uvs; // image points in pixels
     std::vector<long long int> ids;
@@ -60,7 +60,7 @@ public:
     bool trackPoints(std::shared_ptr<PinHoleCamera> camera,
                      const cv::Mat& prevImg,
                      const cv::Mat& currImg,
-                     TrackedPoints& trackedPoints);
+                     TrackedPoints2D& trackedPoints);
 
 private:
     template <typename T>
@@ -69,7 +69,7 @@ private:
         std::size_t jdx{0};
         for (std::size_t idx = 0; idx < v.size(); idx++)
         {
-            if (status[idx])
+            if (static_cast<int>(status[idx]))
             {
                 v[jdx++] = v[idx]; // places active features in the front of the vector
             }
@@ -81,30 +81,41 @@ private:
     void rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCamera> camera);
     void setMask(std::shared_ptr<PinHoleCamera> camera);
 
-    // TODO expose these options as parameters
+    // NOTE: IMPORTANT PARAMETERS TO TUNE
+    // In case the tracking quality seems poor,
+    // then reduce the min distance between features so that
+    // more features are detected in such a way that
+    // RANSAC can eliminate most outliers that did not
+    // correspond to an equivalent rigid body motion of the camera
+    // Additionally, the detection quality is helpful
+    // but might not be useful in texture-less images
+    // higher the number of pyramids, higher the tracking performance
+    // since we keep reducing the resolution of the tracked features
+    // however, more pyramids is time-expensive
+    // TODO move these hard-coded parameters as configurable parameters
     // detector parameters
-    double detectionQuality{0.1};
-    std::size_t maxNrFeatures{1000};
-    int minDistanceBetweenFeatures{30}; // in pixels
+    double m_detectionQuality{0.75};
+    std::size_t m_maxNrFeatures{1000};
+    int m_minDistanceBetweenFeatures{20}; // in pixels
 
     // tracker parameters
-    int maxPyramidLevel{3}; // 0-based levels of sub-image pyramids for KLT tracker
-    cv::Size searchWindowSize{cv::Size(21, 21)}; // window size in pixels for KLT tracker
+    int m_maxPyramidLevel{4}; // 0-based levels of sub-image pyramids for KLT tracker
+    cv::Size m_searchWindowSize{cv::Size(15, 15)}; // window size in pixels for KLT tracker
 
-    int borderSize{1}; // image border size to check for interior tracked features
+    int m_borderSize{1}; // image border size to check for interior tracked features in pixels
 
     // RANSAC parameters for outlier removal
-    double probRANSAC{0.99};
-    double normalizedThresholdRANSAC{0.0003};
+    double m_probRANSAC{0.99};
+    double m_normalizedThresholdRANSAC{0.0003};
 
 
-    cv::Mat mask;
-    std::vector<cv::Point2f> prevPoints;
-    std::vector<cv::Point2f> newPoints, forwardedPoints;
-    std::vector<long long int> trackedIDs;
-    std::vector<long long int> trackCount;
+    cv::Mat m_mask;
+    std::vector<cv::Point2f> m_prevPoints;
+    std::vector<cv::Point2f> m_newPoints, m_forwardedPoints;
+    std::vector<long long int> m_trackedIDs;
+    std::vector<long long int> m_trackCount;
 
-    long long int featureID{0};
+    long long int m_featureID{0};
 };
 
 } // namespace Perception
