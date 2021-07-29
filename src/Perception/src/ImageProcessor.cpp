@@ -8,7 +8,7 @@
 #include <BipedalLocomotion/System/Clock.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
-//#include <KinDynVIO/Perception/Features/LinesTracker.h>
+#include <KinDynVIO/Perception/Features/LinesTracker.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
 
 using namespace KinDynVIO::Perception;
@@ -31,9 +31,10 @@ class ImageProcessor::Impl
 {
 public:
     bool trackPoints();
-    //bool trackLines();
+    bool trackLines();
 
     void drawPoints(const cv::Mat& img, const TrackedPoints& points, const bool& printMetaData);
+    void drawLines(const cv::Mat& img, const TrackedLines& trackedLines, const bool& printMetaData);
 
     bool initialized{false};
     bool debug{true};
@@ -49,8 +50,8 @@ public:
     PointsTracker ptsTracker;
     TrackedPoints trackedPoints;
 
-    //LinesTracker linesTracker;
-    //TrackedLines trackedLines;
+    LinesTracker linesTracker;
+    TrackedLines trackedLines;
 
     std::shared_ptr<PinHoleCamera> camera{nullptr};
 };
@@ -176,10 +177,8 @@ bool ImageProcessor::advance()
     if (m_pimpl->prevImg.img.empty())
     {
         // this is the first image
-        m_pimpl->prevImg.img = cv::Mat(m_pimpl->camera->rows(),
-                                       m_pimpl->camera->cols(),
-                                       CV_8UC1,
-                                       cv::Scalar(0));
+        m_pimpl->prevImg.img
+            = cv::Mat(m_pimpl->camera->rows(), m_pimpl->camera->cols(), CV_8UC1, cv::Scalar(0));
     }
 
     if (m_pimpl->trackerType == TrackerType::POINTS
@@ -192,15 +191,15 @@ bool ImageProcessor::advance()
         }
     }
 
-    //if (m_pimpl->trackerType == TrackerType::LINES
-    //    || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
-    //{
-    //    if (!m_pimpl->trackLines())
-    //    {
-    //        BipedalLocomotion::log()->error("{} Failed to track line features.", printPrefix);
-    //        return false;
-    //    }
-    //}
+    if (m_pimpl->trackerType == TrackerType::LINES
+        || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
+    {
+        if (!m_pimpl->trackLines())
+        {
+            BipedalLocomotion::log()->error("{} Failed to track line features.", printPrefix);
+            return false;
+        }
+    }
 
     m_pimpl->currImg.img.copyTo(m_pimpl->prevImg.img);
     m_pimpl->prevImg.ts = m_pimpl->currImg.ts;
@@ -228,24 +227,24 @@ bool ImageProcessor::Impl::trackPoints()
     return true;
 }
 
-// bool ImageProcessor::Impl::trackLines()
-// {
-//     std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
-//     auto begin = BipedalLocomotion::clock().now();
-//     if (!linesTracker.trackLines(camera, currImg.img, trackedLines))
-//     {
-//         return false;
-//     }
-//
-//     if (debug)
-//     {
-//         auto end = BipedalLocomotion::clock().now();
-//         BipedalLocomotion::log()->info("{} Tracking line features took {} seconds.",
-//                                        printPrefix,
-//                                        (end - begin).count());
-//     }
-//     return true;
-// }
+bool ImageProcessor::Impl::trackLines()
+{
+    std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
+    auto begin = BipedalLocomotion::clock().now();
+    if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, trackedLines))
+    {
+        return false;
+    }
+
+    if (debug)
+    {
+        auto end = BipedalLocomotion::clock().now();
+        BipedalLocomotion::log()->info("{} Tracking line features took {} seconds.",
+                                       printPrefix,
+                                       (end - begin).count());
+    }
+    return true;
+}
 
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
@@ -259,6 +258,7 @@ bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
     if (m_pimpl->trackerType == TrackerType::LINES
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
+        m_pimpl->drawLines(outImg, m_pimpl->trackedLines, m_pimpl->debug);
     }
 
     return true;
@@ -292,6 +292,41 @@ void ImageProcessor::Impl::drawPoints(const cv::Mat& img,
             cv::putText(img,
                         id,
                         points.uvs[jdx] + cv::Point2f(2, 0),
+                        font,
+                        fontScale,
+                        cv::Scalar(0, 255 * (1 - len), 255 * (len)));
+        }
+    }
+}
+
+void ImageProcessor::Impl::drawLines(const cv::Mat& img,
+                                     const TrackedLines& trackedLines,
+                                     const bool& printMetaData)
+{
+    const auto& nrLines = trackedLines.lines.size();
+    const int thickness{2};
+    const int windowSize{10};
+    for (std::size_t jdx = 0; jdx < nrLines; jdx++)
+    {
+        const auto& line = trackedLines.lines[jdx];
+        double len{std::min(1.0, 1.0 * trackedLines.counts[jdx] / windowSize)};
+        cv::line(img,
+                 line.startPixelCoord,
+                 line.endPixelCoord,
+                 cv::Scalar(0, 255 * (1 - len), 255 * (len)),
+                 thickness);
+
+        if (printMetaData)
+        {
+            double fontScale{0.35};
+            // add text - feature ID and track count
+            auto font = cv::FONT_HERSHEY_SIMPLEX;
+            std::string id{"L" + std::to_string(trackedLines.ids[jdx]) + ", "
+                           + std::to_string(trackedLines.counts[jdx])};
+
+            cv::putText(img,
+                        id,
+                        line.startPixelCoord - cv::Point2f(10, 2),
                         font,
                         fontScale,
                         cv::Scalar(0, 255 * (1 - len), 255 * (len)));
