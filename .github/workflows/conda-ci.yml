@@ -35,6 +35,9 @@ jobs:
     - name: Dependencies
       shell: bash -l {0}
       run: |
+        # For some reason defaults remain as  a channel even if it is not in the channels option
+        @ let's remove it manually
+        conda config --remove channels defaults
         # Compilation related dependencies
         mamba install cmake compilers make ninja pkg-config
         # Actual dependencies
