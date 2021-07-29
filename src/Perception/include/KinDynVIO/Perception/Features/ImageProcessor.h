@@ -28,11 +28,15 @@ public:
      * Initialize the ImageProcessor.
      * @param paramHandler pointer to the parameters handler.
      * @note the following parameters are required by the class
-     * |               Parameter Name              |   Type   |                                                   Description                                                     | Mandatory |
-     * |:-----------------------------------------:|:--------:|:-----------------------------------------------------------------------------------------------------------------:|:---------:|
-     * |              `tracker_type`               |`string`  | Type of features to be tracked in the image. The available options are: `points`, `lines` and `points_and_lines`. |    No     |
-     * |              `equalize_img`               |`boolean` |                        Equalize image using histograms to improve contrast of the image.                          |    No     |
-     * |              `debug`                      |`boolean` |                                           Enable Verbose outputs and debug prints.                                |    No     |
+     * |               Parameter Name              |   Type   |                                                   Description                                                                 | Mandatory |
+     * |:-----------------------------------------:|:--------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------:|
+     * |              `tracker_type`               |`string`  | Type of features to be tracked in the image. The available options are: `points`, `lines` and `points_and_lines`.             |    No     |
+     * |              `equalize_img`               |`boolean` |                        Equalize image using histograms to improve contrast of the image.                                      |    No     |
+     * |              `debug`                      |`boolean` |                                           Enable Verbose outputs and debug prints.                                            |    No     |
+     * |   `drawn_tracked_feature_window_size`     |   `int`  |Length of window tracked features to interpolate its color from blue/green to red during visualization depending on longevity. |    No     |
+     * |         `drawn_feature_radius`            |   `int`  |                                 Radius for drawn point features in pixels. Default value is 2.                                |    No     |
+     * |       `drawn_feature_thickness`           |   `int`  |                                  Thickness  for drawn features in pixels. Default value is 2.                                 |    No     |
+     * |           `drawn_font_scale`              |`double`  |                                  Font sclae for accompanying text for drawn features. Default value is 0.35.                  |    No     |
      */
     bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler);
     bool setImage(const cv::Mat& img, const double& receiveTimeInSeconds);

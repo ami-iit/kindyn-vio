@@ -27,6 +27,7 @@ namespace Perception
 
 struct FLDParameters
 {
+    // TODO move these hard-coded parameters as configurable parameters
     // The following documentation is from
     // https://docs.opencv.org/4.5.2/df/d4c/classcv_1_1ximgproc_1_1FastLineDetector.html#details
     // Param               Default value   Description
@@ -51,7 +52,7 @@ struct FLDParameters
     bool doMerge{false};
 };
 
-struct Line
+struct Line2D
 {
     cv::Point2f startPixelCoord; // uv
     cv::Point2f endPixelCoord;   // uv
@@ -59,9 +60,9 @@ struct Line
     cv::Point2f endPoint;        // normalized unprojected
 };
 
-struct TrackedLines
+struct TrackedLines2D
 {
-    std::vector<Line> lines;
+    std::vector<Line2D> lines;
     std::vector<long long int> ids;
     std::vector<long long int> counts;
 };
@@ -80,7 +81,7 @@ public:
     bool trackLines(std::shared_ptr<PinHoleCamera> camera,
                     const cv::Mat& prevImg,
                     const cv::Mat& currImg,
-                    TrackedLines& trackedLines);
+                    TrackedLines2D& trackedLines);
 private:
     template <typename T>
     void reduceLinesVector(const std::vector<uchar> status,
@@ -106,19 +107,20 @@ private:
 
     cv::Mat m_mask;
     std::vector<cv::Vec4f> m_detectedLines;
-    std::vector<Line> m_forwardedLines, m_prevLines, m_newLines;
+    std::vector<Line2D> m_forwardedLines, m_prevLines, m_newLines;
 
-    int m_trackingPixelErrThreshold{3};
+    std::vector<long long int> m_trackedIDs;
+    std::vector<long long int> m_trackCount;
 
-    int m_minDistanceBetweenFeatures{30}; // choose this size such that mask applied does not introduce spuriously detected lines, preferably above 15
-    int m_borderSize{1}; // image border size to check for interior tracked features
+    // TODO move these hard-coded parameters as configurable parameters
+    int m_trackingPixelErrThreshold{3}; // pixel error used for checking bi-directional optical flow
+
+    int m_minDistanceBetweenFeatures{30}; // choose this size (in pixels) such that mask applied does not introduce spuriously detected lines, preferably above 15
+    int m_borderSize{1}; // image border size to check for interior tracked features in pixels
 
     // tracker parameters
     int m_maxPyramidLevel{4}; // 0-based levels of sub-image pyramids for KLT tracker
     cv::Size m_searchWindowSize{cv::Size(15, 15)}; // window size in pixels for KLT tracker
-
-    std::vector<long long int> m_trackedIDs;
-    std::vector<long long int> m_trackCount;
 };
 
 } // namespace Perception

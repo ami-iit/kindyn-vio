@@ -50,6 +50,14 @@ bool PinHoleCamera::initialize(std::weak_ptr<const IParametersHandler> handler)
     const auto& fy{m_K(1, 1)};
     const auto& cx{m_K(0, 2)};
     const auto& cy{m_K(1, 2)};
+
+    if (fx == 0.0 || fy == 0.0)
+    {
+        BipedalLocomotion::log()->error("{} Invalid focal length in parameter \" camera_matrix \" ",
+                                        printPrefix);
+        return false;
+    }
+
     m_Kinv << (1 / fx), 0, (-cx / fx), 0, (1 / fy), (-cy / fy), 0, 0, 1;
 
     if (!handle->getParameter("distortion_coefficients", m_d))

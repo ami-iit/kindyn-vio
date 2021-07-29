@@ -35,7 +35,7 @@ LinesTracker::~LinesTracker()
 bool LinesTracker::trackLines(std::shared_ptr<PinHoleCamera> camera,
                               const cv::Mat& prevImg,
                               const cv::Mat& currImg,
-                              TrackedLines& trackedLines)
+                              TrackedLines2D& trackedLines)
 {
     const std::string printPrefix{"[LinesTracker::trackPoints]"};
     if (camera == nullptr)
@@ -82,7 +82,7 @@ bool LinesTracker::trackLines(std::shared_ptr<PinHoleCamera> camera,
         // get forwarded lines from forwarded points
         for (std::size_t idx = 0; idx < forwardedPoints.size(); idx += 2)
         {
-            Line l;
+            Line2D l;
             l.startPixelCoord = forwardedPoints[idx];
             l.endPixelCoord = forwardedPoints[idx + 1];
 
@@ -136,7 +136,7 @@ bool LinesTracker::trackLines(std::shared_ptr<PinHoleCamera> camera,
     m_fld->detect(maskedImg, m_detectedLines);
     for (auto& dLine : m_detectedLines)
     {
-        Line l;
+        Line2D l;
         l.startPixelCoord.x = dLine(0);
         l.startPixelCoord.y = dLine(1);
         l.endPixelCoord.x = dLine(2);
@@ -165,7 +165,7 @@ void LinesTracker::setMask(std::shared_ptr<PinHoleCamera> camera)
 {
     m_mask = cv::Mat(camera->rows(), camera->cols(), CV_8UC1, cv::Scalar(255));
     // prefer to keep features that are tracked for long time
-    std::vector<std::pair<int, std::pair<Line, int>>> countPointID;
+    std::vector<std::pair<int, std::pair<Line2D, int>>> countPointID;
 
     for (std::size_t idx = 0; idx < m_forwardedLines.size(); idx++)
     {
@@ -177,8 +177,8 @@ void LinesTracker::setMask(std::shared_ptr<PinHoleCamera> camera)
     // highly tracked feature goes to the top
     std::sort(countPointID.begin(),
               countPointID.end(),
-              [](const std::pair<int, std::pair<Line, int>>& a,
-                 const std::pair<int, std::pair<Line, int>>& b) { return a.first > b.first; });
+              [](const std::pair<int, std::pair<Line2D, int>>& a,
+                 const std::pair<int, std::pair<Line2D, int>>& b) { return a.first > b.first; });
 
     // clear and rearrange buffers
     m_forwardedLines.clear();

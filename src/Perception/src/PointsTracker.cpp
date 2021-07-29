@@ -20,7 +20,7 @@ using namespace KinDynVIO::Perception;
 bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
                                 const cv::Mat& prevImg,
                                 const cv::Mat& currImg,
-                                TrackedPoints& trackedPoints)
+                                TrackedPoints2D& trackedPoints)
 {
     const std::string printPrefix{"[PointsTracker::trackPoints]"};
     if (camera == nullptr)
@@ -199,8 +199,8 @@ void PointsTracker::setMask(std::shared_ptr<PinHoleCamera> camera)
             m_forwardedPoints.emplace_back(it.second.first);
             m_trackedIDs.emplace_back(it.second.second);
             m_trackCount.emplace_back(it.first);
-            auto color = cv::Scalar(0);
-            int thickness{-1};
+            auto color = cv::Scalar(0); // black color
+            int thickness{-1}; // hollow circles
             cv::circle(m_mask, it.second.first, m_minDistanceBetweenFeatures, color, thickness);
         }
     }

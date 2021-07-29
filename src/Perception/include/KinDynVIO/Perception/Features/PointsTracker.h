@@ -24,7 +24,7 @@ namespace KinDynVIO
 namespace Perception
 {
 
-struct TrackedPoints
+struct TrackedPoints2D
 {
     std::vector<cv::Point2f> uvs; // image points in pixels
     std::vector<long long int> ids;
@@ -60,7 +60,7 @@ public:
     bool trackPoints(std::shared_ptr<PinHoleCamera> camera,
                      const cv::Mat& prevImg,
                      const cv::Mat& currImg,
-                     TrackedPoints& trackedPoints);
+                     TrackedPoints2D& trackedPoints);
 
 private:
     template <typename T>
@@ -92,7 +92,7 @@ private:
     // higher the number of pyramids, higher the tracking performance
     // since we keep reducing the resolution of the tracked features
     // however, more pyramids is time-expensive
-    // TODO expose these options as parameters
+    // TODO move these hard-coded parameters as configurable parameters
     // detector parameters
     double m_detectionQuality{0.75};
     std::size_t m_maxNrFeatures{1000};
@@ -102,7 +102,7 @@ private:
     int m_maxPyramidLevel{4}; // 0-based levels of sub-image pyramids for KLT tracker
     cv::Size m_searchWindowSize{cv::Size(15, 15)}; // window size in pixels for KLT tracker
 
-    int m_borderSize{1}; // image border size to check for interior tracked features
+    int m_borderSize{1}; // image border size to check for interior tracked features in pixels
 
     // RANSAC parameters for outlier removal
     double m_probRANSAC{0.99};
