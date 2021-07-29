@@ -30,6 +30,7 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
     }
 
     m_forwardedPoints.clear();
+    m_newPoints.clear();
     // if currImg is not the first image then,
     // track features between image pair
     if (m_prevPoints.size() > 0)
