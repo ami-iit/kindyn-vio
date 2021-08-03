@@ -14,7 +14,7 @@
 ##  :hammer: Dependencies
 
 - [iDynTree](https://github.com/robotology/idyntree)
-- [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
+- [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) (**3.3.9** REQUIRED)
 - [manif](https://github.com/artivis/manif)
 - [BipedalLocomotionFramework](https://github.com/dic-iit/bipedal-locomotion-framework)
 - [spdlog](https://github.com/gabime/spdlog)
@@ -22,6 +22,8 @@
 - [OpenCV](https://github.com/opencv/opencv)
 - [GTSAM](https://github.com/borglab/gtsam)
 - [Catch2](https://github.com/catchorg/Catch2) Optional for tests
+
+**NOTE:** This project uses C++17 standard as a default.  In order to avoid unexpected segmentation faults related to Eigen, we recommend to compile `GTSAM` with the CMake flags, `-DGTSAM_COMPILE_FEATURES_PUBLIC=cxx_std_17`, `-DGTSAM_USE_SYSTEM_EIGEN=ON`,  `-DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF`.
 
 
 
