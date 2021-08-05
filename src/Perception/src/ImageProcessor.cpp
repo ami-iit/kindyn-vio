@@ -8,8 +8,6 @@
 #include <BipedalLocomotion/System/Clock.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
-#include <KinDynVIO/Perception/Features/LinesTracker.h>
-#include <KinDynVIO/Perception/Features/PointsTracker.h>
 
 using namespace KinDynVIO::Perception;
 using namespace BipedalLocomotion::ParametersHandler;
@@ -19,12 +17,6 @@ enum class TrackerType
     POINTS,
     LINES,
     POINTS_AND_LINES
-};
-
-struct TimeStampedImg
-{
-    double ts{-1.0};
-    cv::Mat img;
 };
 
 class ImageProcessor::Impl
@@ -67,10 +59,8 @@ public:
     TimeStampedImg currImg, prevImg;
 
     PointsTracker ptsTracker;
-    TrackedPoints2D trackedPoints;
-
     LinesTracker linesTracker;
-    TrackedLines2D trackedLines;
+    TrackedFeatures features;
 
     std::shared_ptr<PinHoleCamera> camera{nullptr};
 };
@@ -182,6 +172,11 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
     return true;
 }
 
+bool ImageProcessor::setInput(const TimeStampedImg& stampedImg)
+{
+    return this->setImage(stampedImg.img, stampedImg.ts);
+}
+
 bool ImageProcessor::advance()
 {
     std::string printPrefix{"[ImageProcessor::advance]"};
@@ -236,7 +231,7 @@ bool ImageProcessor::Impl::trackPoints()
     std::string printPrefix{"[ImageProcessor::Impl::trackPoints]"};
     auto begin = BipedalLocomotion::clock().now();
 
-    if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, trackedPoints))
+    if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, features.points))
     {
         return false;
     }
@@ -255,7 +250,7 @@ bool ImageProcessor::Impl::trackLines()
 {
     std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
     auto begin = BipedalLocomotion::clock().now();
-    if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, trackedLines))
+    if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, features.lines))
     {
         return false;
     }
@@ -270,6 +265,16 @@ bool ImageProcessor::Impl::trackLines()
     return true;
 }
 
+const TrackedFeatures& ImageProcessor::getOutput() const
+{
+    return m_pimpl->features;
+}
+
+bool ImageProcessor::isOutputValid() const
+{
+    return m_pimpl->initialized;
+}
+
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
     cv::cvtColor(m_pimpl->currImg.img, outImg, cv::COLOR_GRAY2RGB);
@@ -277,7 +282,7 @@ bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
         m_pimpl->drawPoints(outImg,
-                            m_pimpl->trackedPoints,
+                            m_pimpl->features.points,
                             m_pimpl->debug,
                             m_pimpl->drawnTrackedFeatureWindowSize,
                             m_pimpl->drawnFeatureRadius,
@@ -289,7 +294,7 @@ bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
         m_pimpl->drawLines(outImg,
-                           m_pimpl->trackedLines,
+                           m_pimpl->features.lines,
                            m_pimpl->debug,
                            m_pimpl->drawnTrackedFeatureWindowSize,
                            m_pimpl->drawnFeatureThickness,

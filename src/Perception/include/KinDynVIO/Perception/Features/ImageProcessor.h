@@ -9,7 +9,10 @@
 #define KINDYNVIO_PERECEPTION_FEATURES_IMAGE_PROCESSOR_H
 
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
+#include <BipedalLocomotion/System/Advanceable.h>
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
+#include <KinDynVIO/Perception/Features/PointsTracker.h>
+#include <KinDynVIO/Perception/Features/LinesTracker.h>
 #include <opencv2/opencv.hpp>
 #include <memory>
 
@@ -19,7 +22,19 @@ namespace KinDynVIO
 namespace Perception
 {
 
-class ImageProcessor
+struct TimeStampedImg
+{
+    double ts{-1.0};
+    cv::Mat img;
+};
+
+struct TrackedFeatures
+{
+    TrackedLines2D lines;
+    TrackedPoints2D points;
+};
+
+class ImageProcessor : public BipedalLocomotion::System::Advanceable<TimeStampedImg, TrackedFeatures>
 {
 public:
     ImageProcessor();
@@ -38,14 +53,17 @@ public:
      * |       `drawn_feature_thickness`           |   `int`  |                                  Thickness  for drawn features in pixels. Default value is 2.                                 |    No     |
      * |           `drawn_font_scale`              |`double`  |                                  Font sclae for accompanying text for drawn features. Default value is 0.35.                  |    No     |
      */
-    bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler);
+    bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler) override;
     bool setImage(const cv::Mat& img, const double& receiveTimeInSeconds);
+    bool setInput(const TimeStampedImg& stampedImg) override;
 
     //Pinhole camera for points manipulation
     bool setCameraModel(std::shared_ptr<KinDynVIO::Perception::PinHoleCamera> camera);
 
-    bool advance();
+    bool advance() override;
     bool getImageWithDetectedFeatures(cv::Mat& outImg);
+    const TrackedFeatures& getOutput() const override;
+    bool isOutputValid() const override;
 
     // delete copy assignment and copy constructor
     ImageProcessor(const ImageProcessor&) = delete;
