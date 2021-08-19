@@ -36,11 +36,13 @@ template <typename PreintegratedFactor>
 class IMUPreintegrator : public BipedalLocomotion::System::Advanceable<IMUPreintegratorInput, PreintegratedFactor>
 {
 public:
+    virtual ~IMUPreintegrator() = default;
     virtual bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler)
     {
         return true;
     }
 
+    virtual bool setBaseLinkIMUExtrinsics(const gtsam::Pose3& b_H_imu) = 0;
     virtual bool setInput(const IMUPreintegratorInput& input) = 0;
 
     virtual bool advance() = 0;
@@ -103,9 +105,10 @@ public:
      * |       `gravity`       |`vector of double`  |           Acceleration due to gravity in the inertial frame.            |    No     |
      */
     bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler) final;
+    bool setBaseLinkIMUExtrinsics(const gtsam::Pose3& b_H_imu) final;
+
     bool setInput(const IMUPreintegratorInput& input) final;
     virtual bool advance() final;
-
 
     // the following functions are all intended to be called
     // only after multiple calls to advance(),
@@ -117,6 +120,8 @@ public:
     const gtsam::CombinedImuFactor& getOutput() const final;
     bool isOutputValid() const final;
 
+    // if setBaseLinkIMUExtrinsics() is properly used
+    // this actually returns the base state, otherwise returns IMU state
     virtual bool getPredictedState(const IMUState& currentState,
                                    IMUState& predictedState) final;
     virtual void resetIMUIntegration() final;

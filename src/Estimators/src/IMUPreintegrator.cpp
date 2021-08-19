@@ -22,8 +22,9 @@ public:
                                                                                 // imuPreInt
     std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuPreInt;
     gtsam::CombinedImuFactor imuFactor;
-
+    gtsam::Pose3 b_H_imu{gtsam::I_3x3};
     bool initialized{false};
+    bool extrinsicSet{false};
     double prevTime;
 
     // param placeholders
@@ -45,9 +46,7 @@ ForsterIMUPreintegrator::ForsterIMUPreintegrator()
     m_pimpl->I6.setIdentity();
 }
 
-ForsterIMUPreintegrator::~ForsterIMUPreintegrator()
-{
-}
+ForsterIMUPreintegrator::~ForsterIMUPreintegrator() = default;
 
 bool ForsterIMUPreintegrator::initialize(
     std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler)
@@ -58,6 +57,13 @@ bool ForsterIMUPreintegrator::initialize(
     {
         BipedalLocomotion::log()->error("{} The parameter handler has expired. "
                                         "Please check its scope.",
+                                        printPrefix);
+        return false;
+    }
+
+    if (!m_pimpl->extrinsicSet)
+    {
+        BipedalLocomotion::log()->error("{} Please call setBaseLinkIMUExtrinsics first",
                                         printPrefix);
         return false;
     }
@@ -86,12 +92,20 @@ bool ForsterIMUPreintegrator::initialize(
 
     // force coriolis effect to false
     m_pimpl->params->setUse2ndOrderCoriolis(false);
+    m_pimpl->params->setBodyPSensor(m_pimpl->b_H_imu);
 
     gtsam::imuBias::ConstantBias bias(m_pimpl->biasInitial);
     m_pimpl->imuPreInt
         = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(m_pimpl->params, bias);
 
     m_pimpl->initialized = true;
+    return true;
+}
+
+bool ForsterIMUPreintegrator::setBaseLinkIMUExtrinsics(const gtsam::Pose3& b_H_imu)
+{
+    m_pimpl->b_H_imu = b_H_imu;
+    m_pimpl->extrinsicSet = true;
     return true;
 }
 
@@ -110,6 +124,13 @@ bool ForsterIMUPreintegrator::setInput(const IMUPreintegratorInput& input)
 
 bool ForsterIMUPreintegrator::advance()
 {
+    std::string printPrefix{"[ForsterIMUPreintegrator::advance]"};
+    if (!m_pimpl->initialized)
+    {
+        BipedalLocomotion::log()->error("{} Please call initialize first", printPrefix);
+        return false;
+    }
+
     const auto& currTime = m_pimpl->input.ts;
     const Eigen::Vector3d& acc = m_pimpl->input.linAcc;
     const Eigen::Vector3d& gyro = m_pimpl->input.gyro;
