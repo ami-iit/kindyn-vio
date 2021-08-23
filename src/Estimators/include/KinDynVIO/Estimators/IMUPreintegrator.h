@@ -21,6 +21,12 @@ namespace KinDynVIO
 namespace Estimators
 {
 
+enum class PreintegratorStatus
+{
+    IDLE,
+    PREINTEGRATING
+};
+
 struct IMUPreintegratorInput
 {
     double ts;
@@ -35,6 +41,8 @@ struct IMUPreintegratorInput
 template <typename PreintegratedFactor>
 class IMUPreintegrator : public BipedalLocomotion::System::Advanceable<IMUPreintegratorInput, PreintegratedFactor>
 {
+protected:
+    PreintegratorStatus m_status{PreintegratorStatus::IDLE};
 public:
     virtual ~IMUPreintegrator() = default;
     virtual bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler)
@@ -48,6 +56,16 @@ public:
     virtual bool advance() = 0;
     virtual const PreintegratedFactor& getOutput() const = 0;
     virtual bool isOutputValid() const = 0;
+
+    inline void startPreintegration()
+    {
+        m_status = PreintegratorStatus::PREINTEGRATING;
+    }
+
+    inline void stopPreintegration()
+    {
+        m_status = PreintegratorStatus::IDLE;
+    }
 
     virtual bool getPredictedState(const IMUState& currentState,
                                    IMUState& predictedState) = 0;

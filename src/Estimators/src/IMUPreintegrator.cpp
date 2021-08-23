@@ -21,7 +21,7 @@ public:
                                                                                 // constructor of
                                                                                 // imuPreInt
     std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuPreInt;
-    gtsam::CombinedImuFactor imuFactor;
+    gtsam::CombinedImuFactor imuFactor, emptyFactor;
     gtsam::Pose3 b_H_imu{gtsam::I_3x3};
     bool initialized{false};
     bool extrinsicSet{false};
@@ -44,6 +44,7 @@ ForsterIMUPreintegrator::ForsterIMUPreintegrator()
     m_pimpl->gravity << 0, 0, -BipedalLocomotion::Math::StandardAccelerationOfGravitation;
     m_pimpl->I3.setIdentity();
     m_pimpl->I6.setIdentity();
+    m_pimpl->emptyFactor = gtsam::CombinedImuFactor();
 }
 
 ForsterIMUPreintegrator::~ForsterIMUPreintegrator() = default;
@@ -132,11 +133,16 @@ bool ForsterIMUPreintegrator::advance()
     }
 
     const auto& currTime = m_pimpl->input.ts;
-    const Eigen::Vector3d& acc = m_pimpl->input.linAcc;
-    const Eigen::Vector3d& gyro = m_pimpl->input.gyro;
     double dt{currTime - m_pimpl->prevTime};
 
-    m_pimpl->imuPreInt->integrateMeasurement(acc, gyro, dt);
+    if (m_status == PreintegratorStatus::PREINTEGRATING)
+    {
+        const Eigen::Vector3d& acc = m_pimpl->input.linAcc;
+        const Eigen::Vector3d& gyro = m_pimpl->input.gyro;
+
+        m_pimpl->imuPreInt->integrateMeasurement(acc, gyro, dt);
+    }
+
     m_pimpl->prevTime = m_pimpl->input.ts;
     return true;
 }
@@ -158,6 +164,14 @@ void ForsterIMUPreintegrator::resetIMUIntegration()
 
 const gtsam::CombinedImuFactor& ForsterIMUPreintegrator::getOutput() const
 {
+    std::string printPrefix{"[ForsterIMUPreintegrator::getOutput]"};
+    if (m_status == PreintegratorStatus::PREINTEGRATING)
+    {
+        BipedalLocomotion::log()->error("{} Preintegration in progress, returning empty factor.",
+                                        printPrefix);
+        return m_pimpl->emptyFactor;
+    }
+
     const auto& Xi = m_pimpl->input.posei;
     const auto& Xj = m_pimpl->input.posei;
     const auto& vi = m_pimpl->input.vi;
