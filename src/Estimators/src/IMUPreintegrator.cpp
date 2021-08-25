@@ -22,7 +22,7 @@ public:
                                                                                 // imuPreInt
     std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuPreInt;
     gtsam::CombinedImuFactor imuFactor, emptyFactor;
-    gtsam::Pose3 b_H_imu{gtsam::I_3x3};
+    gtsam::Pose3 b_H_imu;
     bool initialized{false};
     bool extrinsicSet{false};
     double prevTime;
@@ -45,6 +45,7 @@ ForsterIMUPreintegrator::ForsterIMUPreintegrator()
     m_pimpl->I3.setIdentity();
     m_pimpl->I6.setIdentity();
     m_pimpl->emptyFactor = gtsam::CombinedImuFactor();
+    m_pimpl->b_H_imu.identity();
 }
 
 ForsterIMUPreintegrator::~ForsterIMUPreintegrator() = default;
