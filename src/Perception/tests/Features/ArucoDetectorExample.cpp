@@ -18,7 +18,7 @@
 #include <cmath>
 #include <iostream>
 
-#include <PerceptionFeaturesResourceFolderPath.h>
+#include "ResourceFolderPath.h"
 
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
@@ -104,10 +104,11 @@ bool getCameraMotionFromArucoMarkers(const cv::Mat& frame1,
 
 TEST_CASE("Aruco Detector Example")
 {
-    std::string frame1Path{getCameraFrame1()};
+    auto imgsPath = getMinimumArucoImagesDirectoryPath();
+    std::string frame1Path{imgsPath + "Frame1.jpg"};
     auto frame1 = cv::imread(frame1Path);
 
-    std::string frame2Path{getCameraFrame2()};
+    std::string frame2Path{imgsPath + "Frame2.jpg"};
     auto frame2 = cv::imread(frame2Path);
 
     iDynTree::Transform c1_H_c2;

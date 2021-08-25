@@ -1,0 +1,26 @@
+ Intrinsic of "Color" / 640x480 / {YUYV/RGB8/BGR8/RGBA8/BGRA8/Y16}
+  Width:      	640
+  Height:     	480
+  PPX:        	314.136962890625
+  PPY:        	244.331726074219
+  Fx:         	616.873107910156
+  Fy:         	617.2548828125
+  Distortion: 	Inverse Brown Conrady
+  Coeffs:     	0  	0  	0  	0  	0  
+  FOV (deg):  	54.83 x 42.49
+
+Extrinsic from "Color"	  To	  "Gyro" :
+ Rotation Matrix:
+   0.999999         0.000435384     -0.00143813    
+  -0.000433493      0.999999         0.00131491    
+   0.0014387       -0.00131429       0.999998      
+
+ Translation Vector: -0.0201977230608463  0.00502782128751278  0.0111413560807705  
+
+Extrinsic from "Color"	  To	  "Accel" :
+ Rotation Matrix:
+   0.999999         0.000435384     -0.00143813    
+  -0.000433493      0.999999         0.00131491    
+   0.0014387       -0.00131429       0.999998      
+
+ Translation Vector: -0.0201977230608463  0.00502782128751278  0.0111413560807705  
