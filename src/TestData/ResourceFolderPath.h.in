@@ -1,0 +1,32 @@
+/*
+ * Copyright (C) 2021 Istituto Italiano di Tecnologia (IIT)
+ * All rights reserved.
+ *
+ * This software may be modified and distributed under the terms of the
+ * GNU Lesser General Public License v2.1 or any later version.
+ */
+
+#ifndef RESOURCE_FOLDER_H_IN
+#define RESOURCE_FOLDER_H_IN
+
+#define SOURCE_CONFIG_DIR "@CMAKE_CURRENT_SOURCE_DIR@"
+
+#include <iostream>
+
+inline std::string getArucoIMUPitchMotionDirectoryPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/aruco-pitch-motion/";
+}
+
+inline std::string getArucoIMUPitchMotionDataSetPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/aruco-pitch-motion/vio-imu.mat";
+}
+
+inline std::string getMinimumArucoImagesDirectoryPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/min-data/";
+}
+
+#endif // RESOURCE_FOLDER_H_IN
+

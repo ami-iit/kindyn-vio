@@ -14,6 +14,7 @@ using namespace KinDynVIO::Estimators;
 class ForsterIMUPreintegrator::Impl
 {
 public:
+    void refreshOutput(const PreintegratorStatus& status);
     IMUPreintegratorInput input;
     boost::shared_ptr<gtsam::PreintegratedCombinedMeasurements::Params> params; // requires to be
                                                                                 // boost shared_ptr
@@ -21,9 +22,11 @@ public:
                                                                                 // constructor of
                                                                                 // imuPreInt
     std::shared_ptr<gtsam::PreintegratedCombinedMeasurements> imuPreInt;
-    gtsam::CombinedImuFactor imuFactor;
+    ForsterIMUPreintegratorOutput out;
 
+    gtsam::Pose3 b_H_imu;
     bool initialized{false};
+    bool extrinsicSet{false};
     double prevTime;
 
     // param placeholders
@@ -43,11 +46,10 @@ ForsterIMUPreintegrator::ForsterIMUPreintegrator()
     m_pimpl->gravity << 0, 0, -BipedalLocomotion::Math::StandardAccelerationOfGravitation;
     m_pimpl->I3.setIdentity();
     m_pimpl->I6.setIdentity();
+    m_pimpl->b_H_imu.identity();
 }
 
-ForsterIMUPreintegrator::~ForsterIMUPreintegrator()
-{
-}
+ForsterIMUPreintegrator::~ForsterIMUPreintegrator() = default;
 
 bool ForsterIMUPreintegrator::initialize(
     std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler)
@@ -58,6 +60,13 @@ bool ForsterIMUPreintegrator::initialize(
     {
         BipedalLocomotion::log()->error("{} The parameter handler has expired. "
                                         "Please check its scope.",
+                                        printPrefix);
+        return false;
+    }
+
+    if (!m_pimpl->extrinsicSet)
+    {
+        BipedalLocomotion::log()->error("{} Please call setBaseLinkIMUExtrinsics first",
                                         printPrefix);
         return false;
     }
@@ -86,12 +95,20 @@ bool ForsterIMUPreintegrator::initialize(
 
     // force coriolis effect to false
     m_pimpl->params->setUse2ndOrderCoriolis(false);
+    m_pimpl->params->setBodyPSensor(m_pimpl->b_H_imu);
 
     gtsam::imuBias::ConstantBias bias(m_pimpl->biasInitial);
     m_pimpl->imuPreInt
         = std::make_shared<gtsam::PreintegratedCombinedMeasurements>(m_pimpl->params, bias);
 
     m_pimpl->initialized = true;
+    return true;
+}
+
+bool ForsterIMUPreintegrator::setBaseLinkIMUExtrinsics(const gtsam::Pose3& b_H_imu)
+{
+    m_pimpl->b_H_imu = b_H_imu;
+    m_pimpl->extrinsicSet = true;
     return true;
 }
 
@@ -110,13 +127,27 @@ bool ForsterIMUPreintegrator::setInput(const IMUPreintegratorInput& input)
 
 bool ForsterIMUPreintegrator::advance()
 {
+    std::string printPrefix{"[ForsterIMUPreintegrator::advance]"};
+    if (!m_pimpl->initialized)
+    {
+        BipedalLocomotion::log()->error("{} Please call initialize first", printPrefix);
+        return false;
+    }
+
     const auto& currTime = m_pimpl->input.ts;
-    const Eigen::Vector3d& acc = m_pimpl->input.linAcc;
-    const Eigen::Vector3d& gyro = m_pimpl->input.gyro;
     double dt{currTime - m_pimpl->prevTime};
 
-    m_pimpl->imuPreInt->integrateMeasurement(acc, gyro, dt);
+    if (m_status == PreintegratorStatus::PREINTEGRATING)
+    {
+        const Eigen::Vector3d& acc = m_pimpl->input.linAcc;
+        const Eigen::Vector3d& gyro = m_pimpl->input.gyro;
+
+        m_pimpl->imuPreInt->integrateMeasurement(acc, gyro, dt);
+    }
+
     m_pimpl->prevTime = m_pimpl->input.ts;
+    m_pimpl->refreshOutput(m_status);
+
     return true;
 }
 
@@ -127,25 +158,29 @@ bool ForsterIMUPreintegrator::isOutputValid() const
 
 void ForsterIMUPreintegrator::resetIMUIntegration(const gtsam::imuBias::ConstantBias& bias)
 {
+    m_status = PreintegratorStatus::IDLE;
     m_pimpl->imuPreInt->resetIntegrationAndSetBias(bias);
 }
 
 void ForsterIMUPreintegrator::resetIMUIntegration()
 {
+    m_status = PreintegratorStatus::IDLE;
     m_pimpl->imuPreInt->resetIntegration();
 }
 
-const gtsam::CombinedImuFactor& ForsterIMUPreintegrator::getOutput() const
+const ForsterIMUPreintegrator::ForsterIMUPreintegratorOutput& ForsterIMUPreintegrator::getOutput() const
 {
-    const auto& Xi = m_pimpl->input.posei;
-    const auto& Xj = m_pimpl->input.posei;
-    const auto& vi = m_pimpl->input.vi;
-    const auto& vj = m_pimpl->input.vj;
-    const auto& bi = m_pimpl->input.bi;
-    const auto& bj = m_pimpl->input.bj;
+    m_pimpl->refreshOutput(m_status);
+    return m_pimpl->out;
+}
 
-    m_pimpl->imuFactor = gtsam::CombinedImuFactor(Xi, vi, Xj, vj, bi, bj, *m_pimpl->imuPreInt);
-    return m_pimpl->imuFactor;
+void ForsterIMUPreintegrator::Impl::refreshOutput(const PreintegratorStatus& status)
+{
+    out.status = status;
+    if (status == PreintegratorStatus::PREINTEGRATED)
+    {
+        out.preInt = *imuPreInt;
+    }
 }
 
 bool ForsterIMUPreintegrator::getPredictedState(const IMUState& currentState,

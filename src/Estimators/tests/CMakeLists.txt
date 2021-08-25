@@ -7,4 +7,8 @@ add_kindyn_vio_test(
  SOURCES IMUPreintegrationTest.cpp
  LINKS  KinDynVIO::Estimators BipedalLocomotion::Math)
 
+add_kindyn_vio_test(
+ NAME ArucoWrapper
+ SOURCES ArucoWrapperTest.cpp
+ LINKS  KinDynVIO::TestData KinDynVIO::Estimators BipedalLocomotion::ParametersHandler ${OpenCV_LIBS})
 

@@ -18,7 +18,7 @@
 #include <cmath>
 #include <iostream>
 
-#include <PerceptionFeaturesResourceFolderPath.h>
+#include "ResourceFolderPath.h"
 
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
@@ -53,13 +53,14 @@ std::shared_ptr<PinHoleCamera> getCamera(int row, int col)
 
 TEST_CASE("Point Tracker Unit Test")
 {
-    std::string frame1Path{getCameraFrame1()};
+    auto imgsPath = getMinimumArucoImagesDirectoryPath();
+    std::string frame1Path{imgsPath + "Frame1.jpg"};
     auto frame1 = cv::imread(frame1Path);
 
-    std::string frame2Path{getCameraFrame2()};
+    std::string frame2Path{imgsPath + "Frame2.jpg"};
     auto frame2 = cv::imread(frame2Path);
 
-    std::string frame3Path{getCameraFrame3()};
+    std::string frame3Path{imgsPath + "Frame3.jpg"};
     auto frame3 = cv::imread(frame3Path);
 
     auto camera = getCamera(frame1.rows, frame1.cols);

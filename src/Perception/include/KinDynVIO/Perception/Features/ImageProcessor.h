@@ -10,6 +10,7 @@
 
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
 #include <BipedalLocomotion/System/Advanceable.h>
+#include <KinDynVIO/Perception/Features/DataTypes.h>
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
 #include <KinDynVIO/Perception/Features/LinesTracker.h>
@@ -21,12 +22,6 @@ namespace KinDynVIO
 {
 namespace Perception
 {
-
-struct TimeStampedImg
-{
-    double ts{-1.0};
-    cv::Mat img;
-};
 
 struct TrackedFeatures
 {
