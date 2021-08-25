@@ -24,7 +24,8 @@ namespace Estimators
 enum class PreintegratorStatus
 {
     IDLE,
-    PREINTEGRATING
+    PREINTEGRATING,
+    PREINTEGRATED
 };
 
 struct IMUPreintegratorInput
@@ -32,14 +33,17 @@ struct IMUPreintegratorInput
     double ts;
     Eigen::Vector3d linAcc; // m per second per second
     Eigen::Vector3d gyro; // radians per second
-
-    gtsam::Key posei, posej; // IMU poses at ith and jth timestep
-    gtsam::Key vi, vj; // IMU linear velocities at ith and jth timestep
-    gtsam::Key bi, bj; // IMU biases at ith and jth timestep
 };
 
-template <typename PreintegratedFactor>
-class IMUPreintegrator : public BipedalLocomotion::System::Advanceable<IMUPreintegratorInput, PreintegratedFactor>
+template <typename PreintegratedMeasurements>
+struct IMUPreintegratorOutput
+{
+    PreintegratedMeasurements preInt;
+    PreintegratorStatus status;
+};
+
+template <typename PreintegratedMeasurements>
+class IMUPreintegrator : public BipedalLocomotion::System::Advanceable<IMUPreintegratorInput, IMUPreintegratorOutput<PreintegratedMeasurements> >
 {
 protected:
     PreintegratorStatus m_status{PreintegratorStatus::IDLE};
@@ -54,7 +58,7 @@ public:
     virtual bool setInput(const IMUPreintegratorInput& input) = 0;
 
     virtual bool advance() = 0;
-    virtual const PreintegratedFactor& getOutput() const = 0;
+    virtual const IMUPreintegratorOutput<PreintegratedMeasurements>& getOutput() const = 0;
     virtual bool isOutputValid() const = 0;
 
     inline void startPreintegration()
@@ -64,7 +68,7 @@ public:
 
     inline void stopPreintegration()
     {
-        m_status = PreintegratorStatus::IDLE;
+        m_status = PreintegratorStatus::PREINTEGRATED;
     }
 
     virtual bool getPredictedState(const IMUState& currentState,
@@ -101,12 +105,13 @@ public:
  *     Manifold for Efficient Visual-Inertial Maximum-a-Posteriori Estimation,
  *     Robotics: Science and Systems (RSS), 2015.
  */
-class ForsterIMUPreintegrator : public IMUPreintegrator<gtsam::CombinedImuFactor>
+class ForsterIMUPreintegrator : public IMUPreintegrator<gtsam::PreintegratedCombinedMeasurements>
 {
 public:
     ForsterIMUPreintegrator();
     virtual ~ForsterIMUPreintegrator();
 
+    using ForsterIMUPreintegratorOutput = IMUPreintegratorOutput<gtsam::PreintegratedCombinedMeasurements>;
     /**
      * Initialize the ForsterIMUPreintegrator.
      * @param paramHandler pointer to the parameters handler.
@@ -135,7 +140,8 @@ public:
     // currently no internal check is available for this
     // and the user needs to be careful about these function calls
     // depending on the satisfaction of some conditional statements
-    const gtsam::CombinedImuFactor& getOutput() const final;
+
+    const ForsterIMUPreintegratorOutput& getOutput() const final;
     bool isOutputValid() const final;
 
     // if setBaseLinkIMUExtrinsics() is properly used

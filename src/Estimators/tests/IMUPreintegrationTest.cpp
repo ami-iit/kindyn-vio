@@ -49,6 +49,7 @@ TEST_CASE("IMUPreintegration Test")
     IMUState Xj;
 
     auto imuPreintegrator = std::make_unique<ForsterIMUPreintegrator>();
+    imuPreintegrator->setBaseLinkIMUExtrinsics(gtsam::Pose3());
     std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
     parameterHandler->setParameter("sigma_acc", 1e-5);
     parameterHandler->setParameter("sigma_gyro", 1e-5);
@@ -58,6 +59,15 @@ TEST_CASE("IMUPreintegration Test")
     parameterHandler->setParameter("error_bias", 0.0);
     parameterHandler->setParameter("initial_bias", bias.vector());
     REQUIRE(imuPreintegrator->initialize(parameterHandler));
+
+    // before starting, status should be idle
+    auto out = imuPreintegrator->getOutput();
+    REQUIRE(out.status == PreintegratorStatus::IDLE);
+
+    // after starting, status should be preintegrating
+    imuPreintegrator->startPreintegration();
+    out = imuPreintegrator->getOutput();
+    REQUIRE(out.status == PreintegratorStatus::PREINTEGRATING);
 
     double t = dt;
     for (; t < 1.0; t += dt)
@@ -82,18 +92,6 @@ TEST_CASE("IMUPreintegration Test")
         // Xi                                       Xj
         // vi                                       vi
         // bi                                       bj
-        //
-        // we set random keys now
-        // however they are required to be associated
-        // to relevant variables add to the factor graph
-        // to get the combined IMU factor as output
-        input.posei = 1;
-        input.vi = 2;
-        input.bi = 3;
-        input.posei = 4;
-        input.vi = 5;
-        input.bi = 6;
-
         imuPreintegrator->setInput(input);
         imuPreintegrator->advance();
 
@@ -102,12 +100,28 @@ TEST_CASE("IMUPreintegration Test")
         v += pDoubleDot * dt;
         R = R * gtsam::Rot3::Expmap(omegaB * dt);
     }
+    imuPreintegrator->stopPreintegration();
+
+    // we set random keys now
+    // however they are required to be associated
+    // to relevant variables add to the factor graph
+    // to get the combined IMU factor as output
+    gtsam::Key posei = 1;
+    gtsam::Key vi = 2;
+    gtsam::Key bi = 3;
+    gtsam::Key posej = 4;
+    gtsam::Key vj = 5;
+    gtsam::Key bj = 6;
 
     // we can make use of the methods related to prediction
     // and output factor once, the entire loop for these
     // intermediate IMU integration has been carried out
     imuPreintegrator->getPredictedState(Xi, Xj);
-    auto factor = imuPreintegrator->getOutput();
+    out = imuPreintegrator->getOutput();
+    REQUIRE(out.status == PreintegratorStatus::PREINTEGRATED);
+
+    // valid preintegrated measurements is available only when status is preintegrated
+    auto factor = gtsam::CombinedImuFactor(posei, vi, posej, vj, bi, bj, out.preInt);
 
     if (debug)
     {
@@ -155,4 +169,8 @@ TEST_CASE("IMUPreintegration Test")
     REQUIRE(deltaRij.isApprox(factorDeltaRij));
     REQUIRE(deltaPij.isApprox(factorDeltaPij));
     REQUIRE(deltaVij.isApprox(factorDeltaVij));
+
+    // after generating the factor from preintegrated measurements
+    // we may reset the integration and start again
+    imuPreintegrator->resetIMUIntegration();
 }
