@@ -61,18 +61,12 @@ bool ArucoWrapper::initialize(
     }
 
     handle->getParameter("sigma_pos", m_pimpl->measSigmaPos);
-#ifdef USE_ARUCO_FULL_POSE
     handle->getParameter("sigma_rot", m_pimpl->measSigmaRot);
     m_pimpl->measurementNoise << m_pimpl->measSigmaRot, m_pimpl->measSigmaRot,
         m_pimpl->measSigmaRot, m_pimpl->measSigmaPos, m_pimpl->measSigmaPos, m_pimpl->measSigmaPos;
 
     m_pimpl->priorNoise << m_pimpl->priorSigmaRot, m_pimpl->priorSigmaRot, m_pimpl->priorSigmaRot,
         m_pimpl->priorSigmaPos, m_pimpl->priorSigmaPos, m_pimpl->priorSigmaPos;
-#else
-    m_pimpl->measurementNoise << m_pimpl->measSigmaPos, m_pimpl->measSigmaPos,
-        m_pimpl->measSigmaPos;
-    m_pimpl->priorNoise << m_pimpl->priorSigmaPos, m_pimpl->priorSigmaPos, m_pimpl->priorSigmaPos;
-#endif
 
     m_pimpl->initialized = m_pimpl->detector.initialize(handler);
     if (!m_pimpl->initialized)
@@ -114,6 +108,7 @@ bool ArucoWrapper::advance()
         return false;
     }
 
+    m_pimpl->out.b_H_cam = m_pimpl->b_H_cam;
     m_pimpl->out.detectorOut = m_pimpl->detector.getOutput();
 
     // check if its a keyframe
@@ -140,23 +135,16 @@ bool ArucoWrapper::advance()
                 m_pimpl->markerHistory.insert(id);
                 // if new landmark, then add prior, compensating for the extrinsics
                 // prior = w_H_b_hat * b_H_c * c_H_m
-                m_pimpl->b_H_m = m_pimpl->b_H_cam*m_pimpl->cam_H_m;
                 m_pimpl->w_H_m = m_pimpl->in.Xhat * m_pimpl->b_H_m;
-#if USE_ARUCO_FULL_POSE == 1
                 m_pimpl->out.markerPriors[id] = m_pimpl->w_H_m;
-#elif USE_ARUCO_FULL_POSE == 0
-                m_pimpl->out.markerPriors[id] = m_pimpl->w_H_m.translation();
-#endif
             }
+
+            m_pimpl->b_H_m = m_pimpl->b_H_cam*m_pimpl->cam_H_m;
 
             // for each detected marker in marker out
             // add between factor measurement
             // (measurement between camera pose and landmark)
-#if USE_ARUCO_FULL_POSE == 1
             m_pimpl->out.markerMeasures[id] = m_pimpl->b_H_m;
-#elif USE_ARUCO_FULL_POSE == 0
-            m_pimpl->out.markerMeasures[id] = m_pimpl->b_H_m.translation();
-#endif
         }
     }
     return true;

@@ -8,7 +8,7 @@
 #ifndef KINDYNVIO_ESTIMATORS_ARUCO_WRAPPER_H
 #define KINDYNVIO_ESTIMATORS_ARUCO_WRAPPER_H
 
-#include <KinDynVIO/Perception/Features/DataTypes.h>
+#include <KinDynVIO/Estimators/IO.h>
 #include <BipedalLocomotion/System/Advanceable.h>
 #include <BipedalLocomotion/Perception/Features/ArucoDetector.h>
 #include <gtsam/geometry/BearingRange.h>
@@ -18,36 +18,15 @@
 
 #include <memory>
 
-#define USE_ARUCO_FULL_POSE 0
 
 namespace KinDynVIO
 {
 namespace Estimators
 {
 
-#if USE_ARUCO_FULL_POSE == 1
 using BetweenMeasure = gtsam::Pose3;
 using Prior = gtsam::Pose3;
 using NoiseSigmasV = gtsam::Vector6;
-#elif USE_ARUCO_FULL_POSE == 0
-using BetweenMeasure = gtsam::Point3;
-using Prior = gtsam::Point3;
-using NoiseSigmasV = gtsam::Vector3;
-#endif
-
-struct ArucoWrapperInput
-{
-    gtsam::Pose3 Xhat; // predicted base link pose
-    KinDynVIO::Perception::TimeStampedImg imgTs;
-};
-
-struct ArucoKeyFrame
-{
-    BipedalLocomotion::Perception::ArucoDetectorOutput detectorOut;
-    bool isKeyFrame{false};
-    std::unordered_map<int, BetweenMeasure> markerMeasures;
-    std::unordered_map<int, Prior> markerPriors; // new markers for which a prior needs to be generated
-};
 
 class ArucoWrapper : public BipedalLocomotion::System::Advanceable<ArucoWrapperInput, ArucoKeyFrame>
 {
@@ -55,8 +34,8 @@ public:
     ArucoWrapper();
     ~ArucoWrapper();
 
-    ArucoWrapper(const ArucoWrapper& other) = default; // copy constructor
-    ArucoWrapper& operator=(const ArucoWrapper& other) = default;
+    ArucoWrapper(const ArucoWrapper& other) = delete; // copy constructor
+    ArucoWrapper& operator=(const ArucoWrapper& other) = delete;
     ArucoWrapper(ArucoWrapper&& other) = default; // move constructor
     ArucoWrapper& operator=(ArucoWrapper&& other) noexcept = default;
 

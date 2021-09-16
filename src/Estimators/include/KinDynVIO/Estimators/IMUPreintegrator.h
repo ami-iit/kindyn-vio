@@ -9,6 +9,7 @@
 #define KINDYNVIO_ESTIMATORS_IMU_PREINTEGRATOR_H
 #include <BipedalLocomotion/System/Advanceable.h>
 #include <KinDynVIO/Estimators/States.h>
+#include <KinDynVIO/Estimators/IO.h>
 // gtsam includes
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/inference/Key.h>
@@ -20,27 +21,6 @@ namespace KinDynVIO
 {
 namespace Estimators
 {
-
-enum class PreintegratorStatus
-{
-    IDLE,
-    PREINTEGRATING,
-    PREINTEGRATED
-};
-
-struct IMUPreintegratorInput
-{
-    double ts;
-    Eigen::Vector3d linAcc; // m per second per second
-    Eigen::Vector3d gyro; // radians per second
-};
-
-template <typename PreintegratedMeasurements>
-struct IMUPreintegratorOutput
-{
-    PreintegratedMeasurements preInt;
-    PreintegratorStatus status;
-};
 
 template <typename PreintegratedMeasurements>
 class IMUPreintegrator : public BipedalLocomotion::System::Advanceable<IMUPreintegratorInput, IMUPreintegratorOutput<PreintegratedMeasurements> >
@@ -61,15 +41,8 @@ public:
     virtual const IMUPreintegratorOutput<PreintegratedMeasurements>& getOutput() const = 0;
     virtual bool isOutputValid() const = 0;
 
-    inline void startPreintegration()
-    {
-        m_status = PreintegratorStatus::PREINTEGRATING;
-    }
-
-    inline void stopPreintegration()
-    {
-        m_status = PreintegratorStatus::PREINTEGRATED;
-    }
+    virtual void startPreintegration(const double& prevTimeStamp = 0.0) = 0;
+    virtual void stopPreintegration() = 0;
 
     virtual bool getPredictedState(const IMUState& currentState,
                                    IMUState& predictedState) = 0;
@@ -150,6 +123,9 @@ public:
                                    IMUState& predictedState) final;
     virtual void resetIMUIntegration() final;
     virtual void resetIMUIntegration(const gtsam::imuBias::ConstantBias& bias);
+
+    void startPreintegration(const double& prevTimeStamp  = 0.0) override;
+    void stopPreintegration() override;
 
 private:
     class Impl;

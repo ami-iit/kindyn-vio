@@ -5,9 +5,9 @@
 set(H_PREFIX include/KinDynVIO/Estimators)
 add_kindyn_vio_library(
 NAME                   Estimators
-SOURCES                src/States.cpp src/IMUPreintegrator.cpp src/ArucoWrapper.cpp
-PUBLIC_HEADERS         ${H_PREFIX}/States.h ${H_PREFIX}/IMUPreintegrator.h ${H_PREFIX}/ArucoWrapper.h
+SOURCES                src/States.cpp src/IMUPreintegrator.cpp src/ArucoWrapper.cpp src/GraphManager.cpp
+PUBLIC_HEADERS         ${H_PREFIX}/States.h ${H_PREFIX}/IMUPreintegrator.h ${H_PREFIX}/ArucoWrapper.h ${H_PREFIX}/IO.h ${H_PREFIX}/KinematicInertialFilterWrapper.h ${H_PREFIX}/GraphManager.h
 SUBDIRECTORIES         tests
-PUBLIC_LINK_LIBRARIES  KinDynVIO::PerceptionFeatures BipedalLocomotion::ParametersHandler BipedalLocomotion::TextLogging BipedalLocomotion::Math BipedalLocomotion::System BipedalLocomotion::PerceptionFeatures gtsam gtsam_unstable metis-gtsam iDynTree::idyntree-core
+PUBLIC_LINK_LIBRARIES  KinDynVIO::PerceptionFeatures BipedalLocomotion::ParametersHandler BipedalLocomotion::TextLogging BipedalLocomotion::Math BipedalLocomotion::System BipedalLocomotion::PerceptionFeatures BipedalLocomotion::FloatingBaseEstimators BipedalLocomotion::ContactDetectors gtsam gtsam_unstable metis-gtsam iDynTree::idyntree-core Eigen3::Eigen
 INSTALLATION_FOLDER    Estimators)
 

@@ -194,3 +194,14 @@ bool ForsterIMUPreintegrator::getPredictedState(const IMUState& currentState,
     predictedState.setBias(currentState.b());
     return true;
 }
+
+void ForsterIMUPreintegrator::startPreintegration(const double& prevTimeStamp)
+{
+    m_status = PreintegratorStatus::PREINTEGRATING;
+    m_pimpl->prevTime = prevTimeStamp;
+}
+
+void ForsterIMUPreintegrator::stopPreintegration()
+{
+    m_status = PreintegratorStatus::PREINTEGRATED;
+}
