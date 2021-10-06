@@ -72,6 +72,8 @@ public:
     ArucoOut arucoOut;
     std::shared_ptr<PinHoleCamera> camera{nullptr};
     std::shared_ptr<BipedalLocomotion::Perception::ArucoDetector> arucoDetector{nullptr};
+
+    long long int frameId{-1};
 };
 
 ImageProcessor::ImageProcessor()
@@ -197,6 +199,7 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
         }
     }
 
+    m_pimpl->frameId++;
     return true;
 }
 
@@ -262,6 +265,7 @@ bool ImageProcessor::advance()
         }
     }
 
+    m_pimpl->features.frameID = m_pimpl->frameId;
     m_pimpl->currImg.img.copyTo(m_pimpl->prevImg.img);
     m_pimpl->prevImg.ts = m_pimpl->currImg.ts;
 

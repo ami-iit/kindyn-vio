@@ -49,7 +49,25 @@ struct TrackedFeatures
 {
     TrackedLines2D lines;
     TrackedPoints2D points;
+    long long int frameID;
 };
+
+template<typename PointOrLine>
+struct FeatureTrack
+{
+    // feature ID
+    long long int id{-1};
+
+    // look up for frame ID to pixel coordinates of the feature
+    std::map<long long int, PointOrLine> uvsAcrossFrames;
+
+    long long int startFrameId{-1}, lastUpdatedFrameId{-1};
+    long long int consecutiveTrackCount{0};
+};
+
+
+using PointFeatureTrack = FeatureTrack<cv::Point2f>;
+using LineFeatureTrack = FeatureTrack<Line2D>;
 
 } // namespace Perception
 } // namespace KinDynVIO

@@ -19,3 +19,8 @@ add_kindyn_vio_test(
  NAME ArucoDetectorExample
  SOURCES ArucoDetectorExample.cpp
  LINKS KinDynVIO::TestData KinDynVIO::PerceptionFeatures BipedalLocomotion::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler Eigen3::Eigen iDynTree::idyntree-core)
+
+add_kindyn_vio_test(
+NAME FeatureManager
+SOURCES FeatureManagerTest.cpp
+LINKS KinDynVIO::TestData KinDynVIO::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler)
