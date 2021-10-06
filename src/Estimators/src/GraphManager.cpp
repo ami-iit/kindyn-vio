@@ -8,8 +8,10 @@
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Estimators/GraphManager.h>
 #include <gtsam/slam/SmartProjectionPoseFactor.h>
-#include <unordered_map>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
 #include <map>
+#include <unordered_map>
 
 using namespace KinDynVIO::Estimators;
 using gtsam::symbol_shorthand::B; // IMU bias
@@ -28,12 +30,10 @@ class GraphManager::Impl
 {
 public:
     void resetTemporaryGraph();
-    gtsam::FastList<gtsam::Key> findKeysBefore(double timestamp) const;
 
     long long int currentStateIdx{0}, previousStateIdx{0};
     double lag{150.0};
     gtsam::IncrementalFixedLagSmoother smoother;
-//     gtsam::ISAM2 smoother;
     gtsam::ISAM2Params isam2Params;
 
     // temporary graph variables
@@ -41,20 +41,24 @@ public:
     gtsam::Values newValues, fullValues;
 
     gtsam::FixedLagSmoother::KeyTimestampMap newTimeStamps; // timestamp lookup by key
-    std::map<double, std::size_t> keyIdxLookupByTimeStamp;  // Key Index based on timestamp
+    std::map<double, std::size_t> keyIdxLookupByTimeStamp; // Key Index based on timestamp
     std::map<std::size_t, double> timestampLookupByKeyIdx;
     std::unordered_map<int, SmartFactor::shared_ptr> smartArucoLdmk;
     gtsam::Cal3_S2 camK;
+
+    gtsam::Pose3 estimatedBasePose;
+    gtsam::Vector3 estimatedBaseLinVel;
+    gtsam::imuBias::ConstantBias estimatedIMUBias;
 };
 
 GraphManager::GraphManager()
     : m_pimpl(std::make_unique<GraphManager::Impl>())
 {
     m_pimpl->isam2Params.relinearizeThreshold = 0.01; // Set the relin threshold to zero such that
-                                                     // the batch estimate is recovered
+                                                      // the batch estimate is recovered
     m_pimpl->isam2Params.relinearizeSkip = 1; // Relinearize every time
-//     m_pimpl->isam2Params.factorization = gtsam::ISAM2Params::QR;
-//     m_pimpl->isam2Params.optimizationParams = gtsam::ISAM2GaussNewtonParams();
+    //     m_pimpl->isam2Params.factorization = gtsam::ISAM2Params::QR;
+    //     m_pimpl->isam2Params.optimizationParams = gtsam::ISAM2GaussNewtonParams();
     resetManager();
 }
 
@@ -101,9 +105,8 @@ bool GraphManager::addBaseStatePriorAtCurrentKey(const double& timeStamp,
     m_pimpl->fullValues.insert(velKey, baseVel);
     m_pimpl->fullValues.insert(imuBiasKey, bias);
 
-    m_pimpl->newTimeStamps[poseKey] = timeStamp;
-    m_pimpl->newTimeStamps[velKey] = timeStamp;
-    m_pimpl->newTimeStamps[imuBiasKey] = timeStamp;
+    m_pimpl->newTimeStamps[poseKey] = m_pimpl->newTimeStamps[velKey]
+        = m_pimpl->newTimeStamps[imuBiasKey] = timeStamp;
 
     m_pimpl->keyIdxLookupByTimeStamp[timeStamp] = m_pimpl->currentStateIdx;
     m_pimpl->timestampLookupByKeyIdx[m_pimpl->currentStateIdx] = timeStamp;
@@ -116,7 +119,6 @@ void GraphManager::resetManager()
     m_pimpl->currentStateIdx = 0;
     m_pimpl->previousStateIdx = 0;
     m_pimpl->smoother = gtsam::IncrementalFixedLagSmoother(m_pimpl->lag, m_pimpl->isam2Params);
-//     m_pimpl->smoother = gtsam::ISAM2(m_pimpl->isam2Params);
 
     m_pimpl->keyIdxLookupByTimeStamp.clear();
     m_pimpl->timestampLookupByKeyIdx.clear();
@@ -135,7 +137,7 @@ void GraphManager::Impl::resetTemporaryGraph()
 
 bool GraphManager::optimize()
 {
-
+    const std::string printPrefix{"[GraphManager::Optimize]"};
     if (m_pimpl->currentStateIdx > 0)
     {
         // update smoother with only new content
@@ -144,18 +146,90 @@ bool GraphManager::optimize()
             m_pimpl->smoother.update(m_pimpl->newFactors,
                                      m_pimpl->newValues,
                                      m_pimpl->newTimeStamps);
-//             m_pimpl->smoother.update(m_pimpl->newFactors,
-//                                      m_pimpl->newValues);
+
             m_pimpl->fullValues = m_pimpl->smoother.calculateEstimate();
             m_pimpl->smoother.getISAM2Result().print();
-        } catch (gtsam::IndeterminantLinearSystemException& e)
+        }
+        catch (gtsam::IndeterminantLinearSystemException& e)
         {
             std::cerr << e.what() << std::endl;
             return false;
         }
+        catch (const gtsam::InvalidNoiseModel& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::InvalidMatrixBlock& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::InvalidDenseElimination& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::InvalidArgumentThreadsafe& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::ValuesKeyDoesNotExist& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::CholeskyFailed& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::CheiralityException& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::RuntimeErrorThreadsafe& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const gtsam::OutOfRangeThreadsafe& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const std::out_of_range& e)
+        {
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (const std::exception& e)
+        {
+            // Catch anything thrown within try block that derives from
+            // std::exception.
+            std::cerr << e.what() << std::endl;
+            return false;
+        }
+        catch (...)
+        {
+            // Catch the rest of exceptions.
+            std::cerr << "Unrecognized exception." << std::endl;
+            return false;
+        }
+
         // clear temporary variables
         m_pimpl->resetTemporaryGraph();
     }
+
+    auto poseKey = X(m_pimpl->currentStateIdx);
+    auto velKey = V(m_pimpl->currentStateIdx);
+    auto imuBiasKey = B(m_pimpl->currentStateIdx);
+    m_pimpl->estimatedBasePose = m_pimpl->smoother.calculateEstimate<gtsam::Pose3>(poseKey);
+    m_pimpl->estimatedBaseLinVel = m_pimpl->smoother.calculateEstimate<gtsam::Vector3>(velKey);
+    m_pimpl->estimatedIMUBias
+        = m_pimpl->smoother.calculateEstimate<gtsam::imuBias::ConstantBias>(imuBiasKey);
 
     return true;
 }
@@ -168,15 +242,32 @@ void GraphManager::spawnNewState(const double& timeStamp)
     m_pimpl->keyIdxLookupByTimeStamp[timeStamp] = m_pimpl->currentStateIdx;
     m_pimpl->timestampLookupByKeyIdx[m_pimpl->currentStateIdx] = timeStamp;
 
-    auto marginalizablekeys = m_pimpl->findKeysBefore(timeStamp - m_pimpl->lag);
-//     if (marginalizablekeys.size() > 0)
-//     {
-//         m_pimpl->smoother.marginalizeLeaves(marginalizablekeys);
-//     }
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto currentVelKey{V(m_pimpl->currentStateIdx)};
+    auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+
+    // get time stamp from the spawned state index
+    m_pimpl->newTimeStamps[currentPoseKey] = m_pimpl->newTimeStamps[currentVelKey]
+        = m_pimpl->newTimeStamps[currentIMUBiasKey] = timeStamp;
+}
+
+void GraphManager::setInitialGuessForCurrentStates(const gtsam::Pose3& pose,
+                                                   const gtsam::Vector3& vel,
+                                                   gtsam::imuBias::ConstantBias imuBias)
+{
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto currentVelKey{V(m_pimpl->currentStateIdx)};
+    auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+    m_pimpl->newValues.insert(currentPoseKey, pose);
+    m_pimpl->newValues.insert(currentVelKey, vel);
+    m_pimpl->newValues.insert(currentIMUBiasKey, imuBias);
+    m_pimpl->fullValues.insert(currentPoseKey, pose);
+    m_pimpl->fullValues.insert(currentVelKey, vel);
+    m_pimpl->fullValues.insert(currentIMUBiasKey, imuBias);
 }
 
 void GraphManager::processPreintegratedIMUMeasurements(
-    const gtsam::PreintegratedCombinedMeasurements& preintIMU, gtsam::Pose3& predictedPose)
+    const gtsam::PreintegratedCombinedMeasurements& preintIMU)
 {
     auto prevPoseKey{X(m_pimpl->previousStateIdx)};
     auto prevVelKey{V(m_pimpl->previousStateIdx)};
@@ -193,33 +284,13 @@ void GraphManager::processPreintegratedIMUMeasurements(
                                               prevIMUBiasKey,
                                               currentIMUBiasKey,
                                               preintIMU);
-    auto prevBias = m_pimpl->fullValues.at<gtsam::imuBias::ConstantBias>(prevIMUBiasKey);
-    auto predictedState
-        = preintIMU.predict(gtsam::NavState(m_pimpl->fullValues.at<gtsam::Pose3>(prevPoseKey),
-                                            m_pimpl->fullValues.at<gtsam::Vector3>(prevVelKey)),
-                            prevBias);
-
     m_pimpl->newFactors.add(imuFactor);
-    m_pimpl->newValues.insert(currentPoseKey, predictedPose);
-    m_pimpl->newValues.insert(currentVelKey, predictedState.v());
-    m_pimpl->newValues.insert(currentIMUBiasKey, prevBias);
-    m_pimpl->fullValues.insert(currentPoseKey, predictedPose);
-    m_pimpl->fullValues.insert(currentVelKey, predictedState.v());
-    m_pimpl->fullValues.insert(currentIMUBiasKey, prevBias);
-
-    // get time stamp from the spawned state index
-    m_pimpl->newTimeStamps[currentPoseKey]
-        = m_pimpl->timestampLookupByKeyIdx.at(m_pimpl->currentStateIdx);
-    m_pimpl->newTimeStamps[currentVelKey]
-        = m_pimpl->timestampLookupByKeyIdx.at(m_pimpl->currentStateIdx);
-    m_pimpl->newTimeStamps[currentIMUBiasKey]
-        = m_pimpl->timestampLookupByKeyIdx.at(m_pimpl->currentStateIdx);
 }
 
-void GraphManager::processArucoKeyFrames(const ArucoKeyFrame& arucoKF,
-                                         double pixelNoise)
+void GraphManager::processArucoKeyFrames(const ArucoKeyFrame& arucoKF, double pixelNoise)
 {
     auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+
     for (const auto& [id, marker] : arucoKF.detectorOut.markers)
     {
         auto uv = marker.corners[0];
@@ -234,7 +305,19 @@ void GraphManager::processArucoKeyFrames(const ArucoKeyFrame& arucoKF,
         // if smart factor does not exist, add it to the graph
         auto measNoise = gtsam::noiseModel::Isotropic::Sigma(2, pixelNoise);
         auto K = boost::make_shared<gtsam::Cal3_S2>(m_pimpl->camK);
-        auto smartAruco = boost::make_shared<SmartFactor>(measNoise, K, arucoKF.b_H_cam);
+
+        gtsam::SmartProjectionParams smartParams;
+        smartParams.setDegeneracyMode(gtsam::DegeneracyMode::ZERO_ON_DEGENERACY);
+        smartParams.setLinearizationMode(gtsam::LinearizationMode::HESSIAN);
+        smartParams.setEnableEPI(false); // set to true, refines triangulation using LM iterations
+        smartParams.setLandmarkDistanceThreshold(20.0); // max distance to triangulate in meters
+        smartParams.setRankTolerance(1.0);
+        smartParams.setRetriangulationThreshold(1e-3);
+        smartParams.setDynamicOutlierRejectionThreshold(8.0); // max acceptable reprojection error
+        smartParams.throwCheirality = false;
+        smartParams.verboseCheirality = false;
+
+        auto smartAruco = boost::make_shared<SmartFactor>(measNoise, K, arucoKF.b_H_cam, smartParams);
         m_pimpl->smartArucoLdmk[id] = smartAruco;
         smartAruco->add(gtsam::Point2(uv.x, uv.y), currentPoseKey);
 
@@ -242,15 +325,42 @@ void GraphManager::processArucoKeyFrames(const ArucoKeyFrame& arucoKF,
     }
 }
 
+void GraphManager::processAbsolutePoseMeasurement(const gtsam::Pose3& absPose,
+                                                  double sigmaPos,
+                                                  double sigmaRot)
+{
+    // gtsam pose vector serialized as rotation then tranlation
+    // in contrast to iDynTree serialization, i.e. translation then rotation
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto noiseModel = gtsam::noiseModel::Diagonal::Precisions(
+        (gtsam::Vector6() << gtsam::Vector3::Constant(sigmaRot), gtsam::Vector3::Constant(sigmaPos))
+            .finished());
+    // We define our robust error model here,
+    // providing the default parameter value for the estimator.
+    auto huber = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.345), noiseModel);
+    auto absolutePoseFactor = gtsam::PriorFactor<gtsam::Pose3>(currentPoseKey, absPose, huber);
+    m_pimpl->newFactors.add(absolutePoseFactor);
+}
+
+void GraphManager::processOdometryMeasurement(const gtsam::Pose3& betweenPose,
+                                              const double& sigmaPos,
+                                              const double& sigmaRot)
+{
+    // gtsam pose vector serialized as rotation then tranlation
+    // in contrast to iDynTree serialization, i.e. translation then rotation
+    auto previousPoseKey{X(m_pimpl->previousStateIdx)};
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto noiseModel = gtsam::noiseModel::Diagonal::Precisions(
+        (gtsam::Vector6() << gtsam::Vector3::Constant(sigmaRot), gtsam::Vector3::Constant(sigmaPos))
+            .finished());
+    auto betweenFactor = gtsam::BetweenFactor<gtsam::Pose3>(previousPoseKey, currentPoseKey, betweenPose, noiseModel);
+    m_pimpl->newFactors.add(betweenFactor);
+}
+
 const gtsam::IncrementalFixedLagSmoother& GraphManager::smoother() const
 {
     return m_pimpl->smoother;
 }
-
-// const gtsam::ISAM2& GraphManager::smoother() const
-// {
-//     return m_pimpl->smoother;
-// }
 
 const gtsam::NonlinearFactorGraph& GraphManager::graph() const
 {
@@ -259,26 +369,36 @@ const gtsam::NonlinearFactorGraph& GraphManager::graph() const
 
 gtsam::Pose3 GraphManager::getEstimatedBasePose() const
 {
-    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
-    return m_pimpl->smoother.calculateEstimate<gtsam::Pose3>(currentPoseKey);
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedBasePose;
+    } else
+    {
+        auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::Pose3>(currentPoseKey);
+    }
 }
 
 gtsam::imuBias::ConstantBias GraphManager::getEstimatedIMUBias() const
 {
-    auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
-    return m_pimpl->fullValues.at<gtsam::imuBias::ConstantBias>(currentIMUBiasKey);
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedIMUBias;
+    } else
+    {
+        auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::imuBias::ConstantBias>(currentIMUBiasKey);
+    }
 }
 
-gtsam::FastList<gtsam::Key> GraphManager::Impl::findKeysBefore(double timestamp) const
+gtsam::Vector3 GraphManager::getEstimatedBaseLinearVelocity() const
 {
-    gtsam::FastList<gtsam::Key> keys;
-    auto end = keyIdxLookupByTimeStamp.lower_bound(timestamp);
-    for (auto iter = keyIdxLookupByTimeStamp.begin(); iter != end; ++iter)
+    if (m_pimpl->currentStateIdx > 0)
     {
-        keys.emplace_back(X(iter->second));
-        keys.emplace_back(V(iter->second));
-        keys.emplace_back(B(iter->second));
+        return m_pimpl->estimatedBaseLinVel;
+    } else
+    {
+        auto currentVelKey{V(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::Vector3>(currentVelKey);
     }
-
-    return keys;
 }

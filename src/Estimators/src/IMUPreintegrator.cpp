@@ -160,6 +160,8 @@ void ForsterIMUPreintegrator::resetIMUIntegration(const gtsam::imuBias::Constant
 {
     m_status = PreintegratorStatus::IDLE;
     m_pimpl->imuPreInt->resetIntegrationAndSetBias(bias);
+    // just to be sure reset again
+    m_pimpl->imuPreInt->resetIntegration();
 }
 
 void ForsterIMUPreintegrator::resetIMUIntegration()

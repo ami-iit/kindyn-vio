@@ -45,6 +45,7 @@ public:
     bool advance() final;
     const ArucoKeyFrame& getOutput() const final;
     bool isOutputValid() const final;
+    BipedalLocomotion::Perception::ArucoDetector& detector() const;
 
     NoiseSigmasV landmarkPriorNoiseModel() const;
     NoiseSigmasV landmarkMeasurementNoiseModel() const;

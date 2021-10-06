@@ -169,3 +169,8 @@ NoiseSigmasV ArucoWrapper::landmarkMeasurementNoiseModel() const
 {
     return m_pimpl->measurementNoise;
 }
+
+BipedalLocomotion::Perception::ArucoDetector& ArucoWrapper::detector() const
+{
+    return m_pimpl->detector;
+}

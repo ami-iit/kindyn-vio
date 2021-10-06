@@ -99,20 +99,4 @@ TEST_CASE("Aruco Wrapper Test")
         REQUIRE(out.markerMeasures.size() == nrDetMarkers);
     }
 
-    auto ldmkPriorNoise = wrapper.landmarkPriorNoiseModel();
-    auto ldmkMeasNoise = wrapper.landmarkMeasurementNoiseModel();
-
-
-#if USE_ARUCO_FULL_POSE == 1
-    REQUIRE(std::is_same_v<decltype(out.markerMeasures)::mapped_type, gtsam::Pose3>);
-    REQUIRE(std::is_same_v<decltype(out.markerPriors)::mapped_type, gtsam::Pose3>);
-    REQUIRE(std::is_same_v<decltype(ldmkMeasNoise), gtsam::Vector6>);
-    REQUIRE(std::is_same_v<decltype(ldmkPriorNoise), gtsam::Vector6>);
-#elif USE_ARUCO_FULL_POSE == 0
-    REQUIRE(std::is_same_v<decltype(out.markerMeasures)::mapped_type, gtsam::Point3>);
-    REQUIRE(std::is_same_v<decltype(out.markerPriors)::mapped_type, gtsam::Point3>);
-    REQUIRE(std::is_same_v<decltype(wrapper.landmarkPriorNoiseModel()), gtsam::Vector3>);
-    REQUIRE(std::is_same_v<decltype(wrapper.landmarkMeasurementNoiseModel()), gtsam::Vector3>);
-#endif
-
 }

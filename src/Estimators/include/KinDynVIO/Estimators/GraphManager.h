@@ -28,7 +28,7 @@ namespace KinDynVIO
 namespace Estimators
 {
 using BaseStateDev = BipedalLocomotion::Estimators::FloatingBaseEstimators::StateStdDev;
-
+using IMUBias = gtsam::imuBias::ConstantBias;
 class GraphManager
 {
 public:
@@ -44,19 +44,32 @@ public:
                                        const gtsam::Pose3& basePose,
                                        const gtsam::Vector3& baseVel,
                                        const BaseStateDev& priorNoise,
-                                       const gtsam::imuBias::ConstantBias& bias = gtsam::imuBias::ConstantBias());
+                                       const IMUBias& bias = IMUBias());
+
     void spawnNewState(const double& timeStamp);
-    void processPreintegratedIMUMeasurements(const gtsam::PreintegratedCombinedMeasurements& preintIMU, gtsam::Pose3& predictedPose);
+    void setInitialGuessForCurrentStates(const gtsam::Pose3& pose,
+                                         const gtsam::Vector3& vel,
+                                         IMUBias imuBias = IMUBias());
+
+    void processPreintegratedIMUMeasurements(const gtsam::PreintegratedCombinedMeasurements& preintIMU);
     void processArucoKeyFrames(const ArucoKeyFrame& arucoKF, double pixelNoise = 1.0);
+    void processAbsolutePoseMeasurement(const gtsam::Pose3& absPose,
+                                        double sigmaPos = 0.001,
+                                        double sigmaRot = 0.0174533);
+    void processOdometryMeasurement(const gtsam::Pose3& betweenPose,
+                                    const double& sigmaPos,
+                                    const double& sigmaRot);
+    //void processZeroVelocityMeasurements(const double& zeroVelNoise);
+    //void processNoMotionMeasurements(const double& noMotionNoise);
 
     bool optimize();
     void resetManager();
 
     gtsam::Pose3 getEstimatedBasePose() const;
-    gtsam::imuBias::ConstantBias getEstimatedIMUBias() const;
+    IMUBias getEstimatedIMUBias() const;
+    gtsam::Vector3 getEstimatedBaseLinearVelocity() const;
 
     const gtsam::IncrementalFixedLagSmoother& smoother() const;
-//     const gtsam::ISAM2& smoother() const;
     const gtsam::NonlinearFactorGraph& graph() const;
 
 private:
