@@ -24,10 +24,9 @@ bool FeatureManager::advance()
     binLineFeatures();
     binPointFeatures();
     detectKeyFrame();
-    pruneTracks();
-
     m_isStationary =  detectZeroMotion();
-    m_prevFeatures = m_lastNFeatures.back();
+    pruneTracks();
+    m_prevFeatures = m_currFeatures;
     return true;
 }
 
