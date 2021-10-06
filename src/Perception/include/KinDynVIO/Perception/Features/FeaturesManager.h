@@ -47,14 +47,22 @@ private:
 class FeatureManager
 {
 public:
+    using PointFeatureTrackMap =
+    std::unordered_map<long long int, PointFeatureTrack>;
+    using LineFeatureTrackMap =
+    std::unordered_map<long long int, LineFeatureTrack>;
+
     FeatureManager() = default;
     void setCurrentFrameFeatures(const TrackedFeatures& features);
     bool advance();
 
-    void printFeatureTracks();
-
     const bool& isCameraStationary() const;
     const TrackedFeatures& getCurrentKeyFrameFeatures() const;
+    const PointFeatureTrackMap& getPointFeaturesTrack() const;
+    const LineFeatureTrackMap& getLineFeaturesTrack() const;
+    SlidingWindow<TrackedFeatures> getKeyFramesHistory() const;
+
+    void printFeatureTracks();
 
 private:
     void binLineFeatures();

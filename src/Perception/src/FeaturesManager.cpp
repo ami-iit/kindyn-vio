@@ -273,6 +273,21 @@ const TrackedFeatures& FeatureManager::getCurrentKeyFrameFeatures() const
     return m_lastMKeyFrameFeatures.back();
 }
 
+SlidingWindow<TrackedFeatures> FeatureManager::getKeyFramesHistory() const
+{
+    return m_lastMKeyFrameFeatures;
+}
+
+const FeatureManager::LineFeatureTrackMap& FeatureManager::getLineFeaturesTrack() const
+{
+    return m_lineFeatureTracksMap;
+}
+
+const FeatureManager::PointFeatureTrackMap& FeatureManager::getPointFeaturesTrack() const
+{
+    return m_pointFeatureTracksMap;
+}
+
 void FeatureManager::printFeatureTracks()
 {
     std::cout << "Point Features map: " << m_pointFeatureTracksMap.size() << std::endl;
