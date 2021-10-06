@@ -10,7 +10,7 @@ on:
 
 env:
   manif_TAG: 0.0.4
-  blf_TAG: v0.2.0
+  blf_TAG: 192f9933ed075fc268398eca4c6f2b12d89a6fa4
 
 jobs:
   build:
