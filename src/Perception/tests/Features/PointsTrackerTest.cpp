@@ -20,6 +20,7 @@
 
 #include "ResourceFolderPath.h"
 
+#include <BipedalLocomotion/Perception/Features/ArucoDetector.h>
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
 
@@ -49,6 +50,29 @@ std::shared_ptr<PinHoleCamera> getCamera(int row, int col)
     }
 
     return camera;
+}
+
+std::shared_ptr<ArucoDetector> getArucoDetector()
+{
+    std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
+    // Obtained from the realsense camera used for capturing the images
+    // Obtained from the realsense camera used for capturing the images
+    std::vector<double>
+        K{616.873107910156, 0., 314.136962890625, 0., 617.2548828125, 244.331726074219, 0., 0., 1.};
+    std::vector<double> gamma{0.0, 0.0, 0.0, 0.0, 0.0};
+
+    parameterHandler->setParameter("marker_dictionary", "4X4_50");
+    parameterHandler->setParameter("marker_length", 0.075);
+    parameterHandler->setParameter("camera_matrix", K);
+    parameterHandler->setParameter("distortion_coefficients", gamma);
+
+    auto detector = std::make_shared<ArucoDetector>();
+    if (!detector->initialize(parameterHandler))
+    {
+        return nullptr;
+    }
+
+    return detector;
 }
 
 TEST_CASE("Point Tracker Unit Test")
@@ -84,8 +108,57 @@ TEST_CASE("Point Tracker Unit Test")
         {
             imgProc.setImage(frame2, idx * dt);
         }
-        std::cout << "===========================" << std::endl;
-        std::cout << "Iter:"<< idx << std::endl;
+
+        REQUIRE(imgProc.advance());
+        imgProc.getImageWithDetectedFeatures(outImg);
+        //cv::imshow("processed Frame", outImg);
+        //cv::waitKey();
+    }
+
+    imgProc.setImage(frame3, 10 * dt);
+    REQUIRE(imgProc.advance());
+    imgProc.getImageWithDetectedFeatures(outImg);
+    //cv::imshow("processed Frame", outImg);
+    //cv::waitKey();
+}
+
+TEST_CASE("Aruco Corner Tracker Unit Test")
+{
+    auto imgsPath = getMinimumArucoImagesDirectoryPath();
+    std::string frame1Path{imgsPath + "Frame1.jpg"};
+    auto frame1 = cv::imread(frame1Path);
+
+    std::string frame2Path{imgsPath + "Frame2.jpg"};
+    auto frame2 = cv::imread(frame2Path);
+
+    std::string frame3Path{imgsPath + "Frame3.jpg"};
+    auto frame3 = cv::imread(frame3Path);
+
+    auto camera = getCamera(frame1.rows, frame1.cols);
+    auto arucoDetector = getArucoDetector();
+
+    std::shared_ptr<IParametersHandler> parameterHandler = std::make_shared<StdImplementation>();
+    parameterHandler->setParameter("tracker_type", "points");
+    parameterHandler->setParameter("equalize_image", false);
+    parameterHandler->setParameter("debug", true);
+    parameterHandler->setParameter("force_features_from_aruco", true);
+
+    ImageProcessor imgProc;
+    REQUIRE(imgProc.initialize(parameterHandler));
+    REQUIRE(imgProc.setCameraModel(camera));
+    REQUIRE(imgProc.setArucoDetector(arucoDetector));
+
+    cv::Mat outImg;
+    for (auto idx = 0; idx < 10; idx++)
+    {
+        if (idx % 2 == 0)
+        {
+            imgProc.setImage(frame1, idx * dt);
+        } else
+        {
+            imgProc.setImage(frame2, idx * dt);
+        }
+
         REQUIRE(imgProc.advance());
         imgProc.getImageWithDetectedFeatures(outImg);
         //cv::imshow("processed Frame", outImg);

@@ -15,6 +15,7 @@
 #define KINDYNVIO_PERECEPTION_FEATURES_POINTS_TRACKER_H
 
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
+#include <KinDynVIO/Perception/Features/DataTypes.h>
 #include <opencv2/opencv.hpp>
 #include <vector>
 
@@ -24,13 +25,6 @@ namespace KinDynVIO
 namespace Perception
 {
 
-struct TrackedPoints2D
-{
-    std::vector<cv::Point2f> uvs; // image points in pixels
-    std::vector<long long int> ids;
-    std::vector<long long int> counts;
-    std::vector<cv::Point2f> pts; // normalized coordinates after passing uvs through Kinv
-};
 
 /**
  *  An Improvised version of VINS-MONO
@@ -63,21 +57,6 @@ public:
                      TrackedPoints2D& trackedPoints);
 
 private:
-    template <typename T>
-    void reduceVector(const std::vector<uchar> status, std::vector<T>& v)
-    {
-        std::size_t jdx{0};
-        for (std::size_t idx = 0; idx < v.size(); idx++)
-        {
-            if (static_cast<int>(status[idx]))
-            {
-                v[jdx++] = v[idx]; // places active features in the front of the vector
-            }
-        }
-
-        v.resize(jdx); // remove the last inactive features
-    }
-
     void rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCamera> camera);
     void setMask(std::shared_ptr<PinHoleCamera> camera);
 

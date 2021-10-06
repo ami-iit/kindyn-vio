@@ -9,11 +9,11 @@
 #define KINDYNVIO_PERECEPTION_FEATURES_IMAGE_PROCESSOR_H
 
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
+#include <BipedalLocomotion/Perception/Features/ArucoDetector.h>
 #include <BipedalLocomotion/System/Advanceable.h>
 #include <KinDynVIO/Perception/Features/DataTypes.h>
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
-#include <KinDynVIO/Perception/Features/PointsTracker.h>
-#include <KinDynVIO/Perception/Features/LinesTracker.h>
+
 #include <opencv2/opencv.hpp>
 #include <memory>
 
@@ -22,12 +22,6 @@ namespace KinDynVIO
 {
 namespace Perception
 {
-
-struct TrackedFeatures
-{
-    TrackedLines2D lines;
-    TrackedPoints2D points;
-};
 
 class ImageProcessor : public BipedalLocomotion::System::Advanceable<TimeStampedImg, TrackedFeatures>
 {
@@ -47,8 +41,10 @@ public:
      * |         `drawn_feature_radius`            |   `int`  |                                 Radius for drawn point features in pixels. Default value is 2.                                |    No     |
      * |       `drawn_feature_thickness`           |   `int`  |                                  Thickness  for drawn features in pixels. Default value is 2.                                 |    No     |
      * |           `drawn_font_scale`              |`double`  |                                  Font sclae for accompanying text for drawn features. Default value is 0.35.                  |    No     |
+     * |       `force_features_from_aruco`         |`boolean` |                                  Force to us points and line features from detected aruco markers                             |    No     |
      */
     bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler) override;
+    bool setArucoDetector(std::shared_ptr<BipedalLocomotion::Perception::ArucoDetector> detector);
     bool setImage(const cv::Mat& img, const double& receiveTimeInSeconds);
     bool setInput(const TimeStampedImg& stampedImg) override;
 

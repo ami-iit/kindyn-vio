@@ -14,6 +14,7 @@
 
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/LinesTracker.h>
+#include <KinDynVIO/Perception/Features/Utils.h>
 
 using namespace KinDynVIO::Perception;
 

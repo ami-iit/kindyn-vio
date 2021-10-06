@@ -15,10 +15,11 @@
 #define KINDYNVIO_PERECEPTION_FEATURES_LINES_TRACKER_H
 
 #include <KinDynVIO/Perception/CameraModels/PinHoleCamera.h>
-#include <opencv2/opencv.hpp>
+#include <KinDynVIO/Perception/Features/DataTypes.h>
 #include <opencv2/ximgproc/fast_line_detector.hpp>
-#include <vector>
+#include <opencv2/opencv.hpp>
 #include <utility>
+#include <vector>
 
 namespace KinDynVIO
 {
@@ -52,21 +53,6 @@ struct FLDParameters
     bool doMerge{false};
 };
 
-struct Line2D
-{
-    cv::Point2f startPixelCoord; // uv
-    cv::Point2f endPixelCoord;   // uv
-    cv::Point2f startPoint;      // normalized unprojected
-    cv::Point2f endPoint;        // normalized unprojected
-};
-
-struct TrackedLines2D
-{
-    std::vector<Line2D> lines;
-    std::vector<long long int> ids;
-    std::vector<long long int> counts;
-};
-
 class LinesTracker
 {
 public:
@@ -83,22 +69,6 @@ public:
                     const cv::Mat& currImg,
                     TrackedLines2D& trackedLines);
 private:
-    template <typename T>
-    void reduceLinesVector(const std::vector<uchar> status,
-                           std::vector<T>& linesV)
-    {
-        std::size_t jdx{0};
-        for (std::size_t idx = 0; idx < status.size(); idx+=2)
-        {
-            if (static_cast<int>(status[idx]) && static_cast<int>(status[idx+1]))
-            {
-                linesV[jdx++] = linesV[idx/2]; // places active features in the front of the vector
-            }
-        }
-
-        linesV.resize(jdx); // remove the last inactive features
-    }
-
     void setMask(std::shared_ptr<PinHoleCamera> camera);
 
     cv::Ptr<cv::ximgproc::FastLineDetector> m_fld{nullptr};

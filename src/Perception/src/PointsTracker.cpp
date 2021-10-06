@@ -14,6 +14,7 @@
 
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/PointsTracker.h>
+#include <KinDynVIO/Perception/Features/Utils.h>
 
 using namespace KinDynVIO::Perception;
 
@@ -78,10 +79,10 @@ bool PointsTracker::trackPoints(std::shared_ptr<PinHoleCamera> camera,
             }
         }
 
-        reduceVector(status, m_prevPoints);
-        reduceVector(status, m_forwardedPoints);
-        reduceVector(status, m_trackedIDs);
-        reduceVector(status, m_trackCount);
+        reducePointsVector(status, m_prevPoints);
+        reducePointsVector(status, m_forwardedPoints);
+        reducePointsVector(status, m_trackedIDs);
+        reducePointsVector(status, m_trackCount);
     }
 
     // reject outliers with RANSAC (Nister 5-point algorithm Essential matrix)
@@ -159,10 +160,10 @@ void PointsTracker::rejectOutliersWithEssentialMatrix(std::shared_ptr<PinHoleCam
                              m_normalizedThresholdRANSAC,
                              inlierStatus);
 
-        reduceVector(inlierStatus, m_prevPoints);
-        reduceVector(inlierStatus, m_forwardedPoints);
-        reduceVector(inlierStatus, m_trackedIDs);
-        reduceVector(inlierStatus, m_trackCount);
+        reducePointsVector(inlierStatus, m_prevPoints);
+        reducePointsVector(inlierStatus, m_forwardedPoints);
+        reducePointsVector(inlierStatus, m_trackedIDs);
+        reducePointsVector(inlierStatus, m_trackCount);
     }
 }
 

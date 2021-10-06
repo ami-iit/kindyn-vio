@@ -8,9 +8,14 @@
 #include <BipedalLocomotion/System/Clock.h>
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Perception/Features/ImageProcessor.h>
+#include <KinDynVIO/Perception/Features/PointsTracker.h>
+#include <KinDynVIO/Perception/Features/LinesTracker.h>
+#include <KinDynVIO/Perception/Features/ArucoPointsLinesTracker.h>
 
 using namespace KinDynVIO::Perception;
 using namespace BipedalLocomotion::ParametersHandler;
+
+using ArucoOut = BipedalLocomotion::Perception::ArucoDetectorOutput;
 
 enum class TrackerType
 {
@@ -22,8 +27,8 @@ enum class TrackerType
 class ImageProcessor::Impl
 {
 public:
-    bool trackPoints();
-    bool trackLines();
+    bool trackPoints(ArucoOut& arucoOut);
+    bool trackLines(ArucoOut& arucoOut);
 
     void drawPoints(const cv::Mat& img,
                     const TrackedPoints2D& points,
@@ -60,9 +65,13 @@ public:
 
     PointsTracker ptsTracker;
     LinesTracker linesTracker;
+    ArucoPointsLinesTracker arucoFeatureTracker;
     TrackedFeatures features;
 
+    bool forceAruco{false};
+    ArucoOut arucoOut;
     std::shared_ptr<PinHoleCamera> camera{nullptr};
+    std::shared_ptr<BipedalLocomotion::Perception::ArucoDetector> arucoDetector{nullptr};
 };
 
 ImageProcessor::ImageProcessor()
@@ -115,6 +124,7 @@ bool ImageProcessor::initialize(std::weak_ptr<const IParametersHandler> handler)
     handle->getParameter("drawn_feature_radius", m_pimpl->drawnFeatureRadius);
     handle->getParameter("drawn_feature_thickness", m_pimpl->drawnFeatureThickness);
     handle->getParameter("drawn_font_scale", m_pimpl->drawnFontScale);
+    handle->getParameter("force_features_from_aruco", m_pimpl->forceAruco);
 
     m_pimpl->initialized = true;
     return true;
@@ -134,6 +144,20 @@ bool ImageProcessor::setCameraModel(std::shared_ptr<PinHoleCamera> camera)
     return true;
 }
 
+bool ImageProcessor::setArucoDetector(std::shared_ptr<BipedalLocomotion::Perception::ArucoDetector> detector)
+{
+    const std::string printPrefix{"[ImageProcessor::setArucoDetector]"};
+    if (detector == nullptr)
+    {
+        BipedalLocomotion::log()->error("{} Invalid pointer to Aruco detector.", printPrefix);
+        return false;
+    }
+
+    m_pimpl->arucoDetector = detector;
+
+    return true;
+}
+
 bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSeconds)
 {
     std::string printPrefix{"[ImageProcessor::setImage]"};
@@ -143,10 +167,11 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
         return false;
     }
 
-    if (img.channels() == 3)
+    bool useColor = m_pimpl->forceAruco && (m_pimpl->arucoDetector != nullptr);
+    if (!useColor && img.channels() == 3)
     {
         cv::cvtColor(img, m_pimpl->currImg.img, cv::COLOR_RGB2GRAY);
-    } else if (img.channels() == 4)
+    } else if (!useColor && img.channels() == 4)
     {
         cv::cvtColor(img, m_pimpl->currImg.img, cv::COLOR_RGBA2GRAY);
     } else
@@ -156,16 +181,19 @@ bool ImageProcessor::setImage(const cv::Mat& img, const double& receiveTimeInSec
 
     m_pimpl->currImg.ts = receiveTimeInSeconds;
 
-    auto begin = BipedalLocomotion::clock().now();
-    if (m_pimpl->equalizeImg)
+    if (!useColor)
     {
-        m_pimpl->clahe->apply(m_pimpl->currImg.img, m_pimpl->currImg.img);
-        if (m_pimpl->debug)
+        auto begin = BipedalLocomotion::clock().now();
+        if (m_pimpl->equalizeImg)
         {
-            auto end = BipedalLocomotion::clock().now();
-            BipedalLocomotion::log()->info("{} CLAHE took {} seconds.",
-                                           printPrefix,
-                                           (end - begin).count());
+            m_pimpl->clahe->apply(m_pimpl->currImg.img, m_pimpl->currImg.img);
+            if (m_pimpl->debug)
+            {
+                auto end = BipedalLocomotion::clock().now();
+                BipedalLocomotion::log()->info("{} CLAHE took {} seconds.",
+                                            printPrefix,
+                                            (end - begin).count());
+            }
         }
     }
 
@@ -200,10 +228,24 @@ bool ImageProcessor::advance()
             = cv::Mat(m_pimpl->camera->rows(), m_pimpl->camera->cols(), CV_8UC1, cv::Scalar(0));
     }
 
+    if (m_pimpl->forceAruco && (m_pimpl->arucoDetector != nullptr))
+    {
+        bool ok{true};
+        ok = m_pimpl->arucoDetector->setImage(m_pimpl->currImg.img,
+                                              m_pimpl->currImg.ts);
+        ok = ok && m_pimpl->arucoDetector->advance();
+        if (!ok)
+        {
+            return false;
+        }
+
+        m_pimpl->arucoOut = m_pimpl->arucoDetector->getOutput();
+    }
+
     if (m_pimpl->trackerType == TrackerType::POINTS
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
-        if (!m_pimpl->trackPoints())
+        if (!m_pimpl->trackPoints(m_pimpl->arucoOut))
         {
             BipedalLocomotion::log()->error("{} Failed to track point features.", printPrefix);
             return false;
@@ -213,7 +255,7 @@ bool ImageProcessor::advance()
     if (m_pimpl->trackerType == TrackerType::LINES
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
-        if (!m_pimpl->trackLines())
+        if (!m_pimpl->trackLines(m_pimpl->arucoOut))
         {
             BipedalLocomotion::log()->error("{} Failed to track line features.", printPrefix);
             return false;
@@ -226,14 +268,25 @@ bool ImageProcessor::advance()
     return true;
 }
 
-bool ImageProcessor::Impl::trackPoints()
+bool ImageProcessor::Impl::trackPoints(ArucoOut& arucoOut)
 {
     std::string printPrefix{"[ImageProcessor::Impl::trackPoints]"};
     auto begin = BipedalLocomotion::clock().now();
 
-    if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, features.points))
+    bool useAruco = forceAruco && (arucoDetector != nullptr);
+    if (useAruco)
     {
-        return false;
+        if (!arucoFeatureTracker.trackPoints(camera, arucoOut, features.points))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!ptsTracker.trackPoints(camera, prevImg.img, currImg.img, features.points))
+        {
+            return false;
+        }
     }
 
     if (debug)
@@ -243,16 +296,29 @@ bool ImageProcessor::Impl::trackPoints()
                                        printPrefix,
                                        (end - begin).count());
     }
+
     return true;
 }
 
-bool ImageProcessor::Impl::trackLines()
+bool ImageProcessor::Impl::trackLines(ArucoOut& arucoOut)
 {
     std::string printPrefix{"[ImageProcessor::Impl::trackLines]"};
     auto begin = BipedalLocomotion::clock().now();
-    if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, features.lines))
+
+    bool useAruco = forceAruco && (arucoDetector != nullptr);
+    if (useAruco)
     {
-        return false;
+        if (!arucoFeatureTracker.trackLines(camera, arucoOut, features.lines))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!linesTracker.trackLines(camera, prevImg.img, currImg.img, features.lines))
+        {
+            return false;
+        }
     }
 
     if (debug)
@@ -277,7 +343,16 @@ bool ImageProcessor::isOutputValid() const
 
 bool ImageProcessor::getImageWithDetectedFeatures(cv::Mat& outImg)
 {
-    cv::cvtColor(m_pimpl->currImg.img, outImg, cv::COLOR_GRAY2RGB);
+    bool useColor = m_pimpl->forceAruco && (m_pimpl->arucoDetector != nullptr);
+    if (!useColor)
+    {
+        cv::cvtColor(m_pimpl->currImg.img, outImg, cv::COLOR_GRAY2RGB);
+    }
+    else
+    {
+        m_pimpl->currImg.img.copyTo(outImg);
+    }
+
     if (m_pimpl->trackerType == TrackerType::POINTS
         || m_pimpl->trackerType == TrackerType::POINTS_AND_LINES)
     {
