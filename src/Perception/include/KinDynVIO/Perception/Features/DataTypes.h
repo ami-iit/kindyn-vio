@@ -17,8 +17,8 @@ namespace Perception
 
 struct TimeStampedImg
 {
-    double ts{-1.0};
     cv::Mat img;
+    double ts{-1.0};
 };
 
 struct TrackedPoints2D

@@ -314,7 +314,7 @@ SlidingWindow<TrackedFeatures> FeatureManager::getLastNFramesHistory() const
     return m_lastNFeatures;
 }
 
-void FeatureManager::printFeatureTracks()
+void FeatureManager::printFeatureTracks() const
 {
     std::cout << "Point Features map: " << m_pointFeatureTracksMap.size() << std::endl;
     for (const auto& [id, track] : m_pointFeatureTracksMap)

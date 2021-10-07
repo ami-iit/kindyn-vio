@@ -65,7 +65,7 @@ public:
     SlidingWindow<TrackedFeatures> getKeyFramesHistory() const;
     SlidingWindow<TrackedFeatures> getLastNFramesHistory() const;
 
-    void printFeatureTracks();
+    void printFeatureTracks() const;
 
 private:
     void binLineFeatures();
