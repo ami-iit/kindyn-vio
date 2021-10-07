@@ -8,6 +8,7 @@
 #ifndef KINDYNVIO_ESTIMATORS_FEATURE_MANAGER_H
 #define KINDYNVIO_ESTIMATORS_FEATURE_MANAGER_H
 
+#include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
 #include <KinDynVIO/Perception/Features/DataTypes.h>
 #include <queue>
 #include <deque>
@@ -53,6 +54,7 @@ public:
     std::unordered_map<long long int, LineFeatureTrack>;
 
     FeatureManager() = default;
+    bool initialize(std::weak_ptr<const BipedalLocomotion::ParametersHandler::IParametersHandler> handler);
     void setCurrentFrameFeatures(const TrackedFeatures& features);
     bool advance();
 
@@ -61,6 +63,7 @@ public:
     const PointFeatureTrackMap& getPointFeaturesTrack() const;
     const LineFeatureTrackMap& getLineFeaturesTrack() const;
     SlidingWindow<TrackedFeatures> getKeyFramesHistory() const;
+    SlidingWindow<TrackedFeatures> getLastNFramesHistory() const;
 
     void printFeatureTracks();
 
@@ -91,21 +94,23 @@ private:
     // maintain a sliding window of last N tracked features
     SlidingWindow<TrackedFeatures> m_lastNFeatures;
     TrackedFeatures m_currFeatures, m_prevFeatures;
-    int  m_nrConsecutiveFrameCount{0};
-    int m_nrZeroMotionFrames{10};
-    double m_cumulativeSumMotionDisparity{0.0};
 
     // maintain a sliding window of last M keyframe features
     SlidingWindow<TrackedFeatures> m_lastMKeyFrameFeatures;
 
+    // Variables for detecting zero motion
+    int  m_nrConsecutiveFrameCount{0};
+    int m_nrZeroMotionFrames{10};
+    double m_cumulativeSumMotionDisparity{0.0};
+    double m_zeroMotionThreshold{0.5}; // in pixel per N frames
+    bool m_isStationary{false};
+
+    // Variables for keyframe selection
     double m_medianDisparityThreshold{20.0}; // disparity threshold over which new keyframe is selected
     double m_medianDisparity{0}; // disparity between current frame and last key frame
-    double m_zeroMotionThreshold{0.5}; // in pixel per N frames
+
     int m_nrMaxKeyFramesInStore{5};
-
     int m_waitNrFramesBeforePruning{20};
-
-    bool m_isStationary{false};
 
     // lookup for feature ID and corresponding feature track
     std::unordered_map<long long int, PointFeatureTrack> m_pointFeatureTracksMap;

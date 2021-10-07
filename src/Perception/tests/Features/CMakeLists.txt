@@ -23,4 +23,4 @@ add_kindyn_vio_test(
 add_kindyn_vio_test(
 NAME FeatureManager
 SOURCES FeatureManagerTest.cpp
-LINKS KinDynVIO::TestData KinDynVIO::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler)
+LINKS KinDynVIO::TestData KinDynVIO::PerceptionFeatures BipedalLocomotion::PerceptionFeatures ${OpenCV_LIBS} BipedalLocomotion::ParametersHandler)

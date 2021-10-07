@@ -12,6 +12,28 @@
 #include <cmath>
 
 using namespace KinDynVIO::Perception;
+using namespace BipedalLocomotion::ParametersHandler;
+
+bool FeatureManager::initialize(std::weak_ptr<const IParametersHandler> handler)
+{
+    const std::string printPrefix{"[FeatureManager::initialize]"};
+    auto handle = handler.lock();
+    if (handle == nullptr)
+    {
+        BipedalLocomotion::log()->error("{} The parameter handler has expired. "
+                                        "Please check its scope.",
+                                        printPrefix);
+        return false;
+    }
+
+    handle->getParameter("wait_frames_for_zero_motion", m_nrZeroMotionFrames);
+    handle->getParameter("zero_motion_threshold", m_zeroMotionThreshold);
+    handle->getParameter("disparity_threshold_for_new_keyframe", m_medianDisparityThreshold);
+    handle->getParameter("wait_frames_for_pruning", m_waitNrFramesBeforePruning);
+    handle->getParameter("keyframe_history_size", m_nrMaxKeyFramesInStore);
+
+    return true;
+}
 
 void FeatureManager::setCurrentFrameFeatures(const TrackedFeatures& features)
 {
@@ -285,6 +307,11 @@ const FeatureManager::LineFeatureTrackMap& FeatureManager::getLineFeaturesTrack(
 const FeatureManager::PointFeatureTrackMap& FeatureManager::getPointFeaturesTrack() const
 {
     return m_pointFeatureTracksMap;
+}
+
+SlidingWindow<TrackedFeatures> FeatureManager::getLastNFramesHistory() const
+{
+    return m_lastNFeatures;
 }
 
 void FeatureManager::printFeatureTracks()
