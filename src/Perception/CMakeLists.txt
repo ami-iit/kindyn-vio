@@ -17,7 +17,17 @@ NAME                   PerceptionFeatures
 SOURCES                src/ImageProcessor.cpp src/PointsTracker.cpp src/LinesTracker.cpp src/ArucoPointsLinesTracker.cpp src/FeaturesManager.cpp
 PUBLIC_HEADERS         ${H_PREFIX}/DataTypes.h ${H_PREFIX}/ImageProcessor.h ${H_PREFIX}/PointsTracker.h ${H_PREFIX}/LinesTracker.h ${H_PREFIX}/ArucoPointsLinesTracker.h ${H_PREFIX}/FeaturesManager.h
 SUBDIRECTORIES         tests/Features
-PUBLIC_LINK_LIBRARIES  ${OpenCV_LIBS} KinDynVIO::PerceptionCameraModels BipedalLocomotion::ParametersHandler BipedalLocomotion::TextLogging BipedalLocomotion::System
+PUBLIC_LINK_LIBRARIES  ${OpenCV_LIBS} KinDynVIO::PerceptionCameraModels BipedalLocomotion::PerceptionFeatures BipedalLocomotion::ParametersHandler BipedalLocomotion::TextLogging BipedalLocomotion::System
 INSTALLATION_FOLDER    Perception/Features)
+
+
+set(H_PREFIX include/KinDynVIO/Perception/Pipelines)
+add_kindyn_vio_library(
+NAME                   PerceptionPipelines
+SOURCES                src/VisionFrontEnd.cpp
+PUBLIC_HEADERS         ${H_PREFIX}/VisionFrontEnd.h
+SUBDIRECTORIES         tests/Pipelines
+PUBLIC_LINK_LIBRARIES  ${OpenCV_LIBS} KinDynVIO::PerceptionCameraModels KinDynVIO::PerceptionFeatures BipedalLocomotion::PerceptionFeatures BipedalLocomotion::ParametersHandler BipedalLocomotion::TextLogging BipedalLocomotion::System
+INSTALLATION_FOLDER    Perception/Pipelines)
 
 
