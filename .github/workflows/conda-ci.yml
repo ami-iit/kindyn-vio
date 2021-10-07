@@ -82,8 +82,9 @@ jobs:
       run: |
         # bipedal-locomotion-framework
         cd ${GITHUB_WORKSPACE}
-        git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+        git clone https://github.com/dic-iit/bipedal-locomotion-framework
         cd bipedal-locomotion-framework
+        git checkout ${blf_TAG}
         mkdir -p build
         cd build
         cmake -GNinja -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
