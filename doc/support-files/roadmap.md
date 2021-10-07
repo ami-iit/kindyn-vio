@@ -6,11 +6,11 @@ KinDynVIO is a factor graph-based, tightly-coupled multimodal sensor fusion fram
 
 ### Roadmap
 
-- [ ] Add points tracker class for image features
-- [ ] Add lines tracker class for image features
-- [ ] Add features manager class for tracking the features across images
+- [x] Add points tracker class for image features
+- [x] Add lines tracker class for image features
+- [x] Add features manager class for tracking the features across images
 - [ ] Add an example of BLF filter with GTSAM iSAM2 based fixed lag smoother with  odometry factors
-- [ ] Add IMU preintegration class
+- [x] Add IMU preintegration class
 - [ ] BLF filter as odometry factor + IMU preintegration for kinematic-inertial smoothing
 - [ ] Add an example of Visual-inertial smoothing based on image features
 - [ ] Test on a realsense recorded dataset with Aruco marker tracking as ground truth
