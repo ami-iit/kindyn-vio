@@ -29,6 +29,7 @@ namespace Estimators
 {
 using BaseStateDev = BipedalLocomotion::Estimators::FloatingBaseEstimators::StateStdDev;
 using IMUBias = gtsam::imuBias::ConstantBias;
+
 class GraphManager
 {
 public:
@@ -40,6 +41,7 @@ public:
     GraphManager& operator=(GraphManager &&) = default;
 
     void setCameraIntrinsics(const std::vector<double>& K);
+    void setBaseCameraExtrinsics(const gtsam::Pose3& b_H_cam);
     bool addBaseStatePriorAtCurrentKey(const double& timeStamp,
                                        const gtsam::Pose3& basePose,
                                        const gtsam::Vector3& baseVel,
@@ -52,15 +54,17 @@ public:
                                          IMUBias imuBias = IMUBias());
 
     void processPreintegratedIMUMeasurements(const gtsam::PreintegratedCombinedMeasurements& preintIMU);
-    void processArucoKeyFrames(const ArucoKeyFrame& arucoKF, double pixelNoise = 1.0);
+    void processPointFeatures(const KinDynVIO::Perception::TrackedFeatures& keyFrameFeatures,
+                              double pixelNoise = 1.0);
     void processAbsolutePoseMeasurement(const gtsam::Pose3& absPose,
                                         double sigmaPos = 0.001,
                                         double sigmaRot = 0.0174533);
     void processOdometryMeasurement(const gtsam::Pose3& betweenPose,
                                     const double& sigmaPos,
                                     const double& sigmaRot);
-    //void processZeroVelocityMeasurements(const double& zeroVelNoise);
-    //void processNoMotionMeasurements(const double& noMotionNoise);
+    void processZeroVelocityMeasurements(const double& sigmaLin);
+    void processZeroMotionMeasurements(const double& sigmaPos,
+                                       const double& sigmaRot);
 
     bool optimize();
     void resetManager();

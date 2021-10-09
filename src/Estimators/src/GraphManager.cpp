@@ -14,12 +14,17 @@
 #include <unordered_map>
 
 using namespace KinDynVIO::Estimators;
+using namespace KinDynVIO::Perception;
 using gtsam::symbol_shorthand::B; // IMU bias
 using gtsam::symbol_shorthand::L; // IMU bias
 using gtsam::symbol_shorthand::V; // Base Velocity
 using gtsam::symbol_shorthand::X; // Base Pose
 
 using SmartFactor = gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2>;
+using Slot = long int;
+using LandmarkID = long long int;
+using SmartFactorMap = std::unordered_map<long long int, SmartFactor::shared_ptr>;
+using SmartFactorMapExtended = gtsam::FastMap<long long int, std::pair<SmartFactor::shared_ptr, Slot> >;
 
 //     using gtsam::symbol_shorthand::C; // COM position
 //     using gtsam::symbol_shorthand::D; // COM velocity
@@ -30,21 +35,42 @@ class GraphManager::Impl
 {
 public:
     void resetTemporaryGraph();
+    gtsam::FastList<gtsam::Key> findAndMoveKeysBefore(double timestamp);
+    void addPointFeature(const long long int& id,
+                         cv::Point2f uv,
+                         const double& pixelNoise);
+    void updatePointFeature(const long long int& id,
+                            cv::Point2f uv);
+    void setupSmartFactorParameters();
+    void setupSmartFactorNoiseModel(const double& pixelNoise);
+    bool addOrMarkRemovableSmartFactorsToFactorGraph();
+    bool updateSmartFactorSlotsFromISAMResult();
+    bool factorHasAMarginalizableKey(boost::shared_ptr<gtsam::NonlinearFactor> factor,
+                                     const gtsam::FastList<gtsam::Key>& marginalizableKeys);
 
     long long int currentStateIdx{0}, previousStateIdx{0};
-    double lag{150.0};
+    double lag{6.0};
     gtsam::IncrementalFixedLagSmoother smoother;
     gtsam::ISAM2Params isam2Params;
 
     // temporary graph variables
     gtsam::NonlinearFactorGraph newFactors;
     gtsam::Values newValues, fullValues;
+    gtsam::FactorIndices factorsToRemove;
 
-    gtsam::FixedLagSmoother::KeyTimestampMap newTimeStamps; // timestamp lookup by key
+    gtsam::FixedLagSmoother::KeyTimestampMap newTimeStamps, fullTimeStamps; // timestamp lookup by key
     std::map<double, std::size_t> keyIdxLookupByTimeStamp; // Key Index based on timestamp
     std::map<std::size_t, double> timestampLookupByKeyIdx;
-    std::unordered_map<int, SmartFactor::shared_ptr> smartArucoLdmk;
-    gtsam::Cal3_S2 camK;
+
+    gtsam::SmartProjectionParams smartParams;
+    gtsam::SharedNoiseModel smartFactorNoiseModel;
+    SmartFactorMap smartPointLdmks;
+    SmartFactorMapExtended existingSmartFactorsMap;
+    std::vector<LandmarkID> newlyAddedLdmkIds;
+
+    gtsam::Cal3_S2::shared_ptr camK;
+    gtsam::Pose3 b_H_cam;
+
 
     gtsam::Pose3 estimatedBasePose;
     gtsam::Vector3 estimatedBaseLinVel;
@@ -57,9 +83,10 @@ GraphManager::GraphManager()
     m_pimpl->isam2Params.relinearizeThreshold = 0.01; // Set the relin threshold to zero such that
                                                       // the batch estimate is recovered
     m_pimpl->isam2Params.relinearizeSkip = 1; // Relinearize every time
-    //     m_pimpl->isam2Params.factorization = gtsam::ISAM2Params::QR;
-    //     m_pimpl->isam2Params.optimizationParams = gtsam::ISAM2GaussNewtonParams();
+    m_pimpl->isam2Params.findUnusedFactorSlots = true;
+    m_pimpl->isam2Params.factorization = gtsam::ISAM2Params::Factorization::QR;
     resetManager();
+    m_pimpl->setupSmartFactorParameters();
 }
 
 GraphManager::~GraphManager()
@@ -69,7 +96,12 @@ GraphManager::~GraphManager()
 void GraphManager::setCameraIntrinsics(const std::vector<double>& K)
 {
     // fx fy skew px(u0) py(v0)
-    m_pimpl->camK = gtsam::Cal3_S2(K[0], K[4], 0.0, K[2], K[5]);
+    m_pimpl->camK = boost::make_shared<gtsam::Cal3_S2>(K[0], K[4], 0.0, K[2], K[5]);
+}
+
+void GraphManager::setBaseCameraExtrinsics(const gtsam::Pose3& b_H_cam)
+{
+    m_pimpl->b_H_cam = b_H_cam;
 }
 
 bool GraphManager::addBaseStatePriorAtCurrentKey(const double& timeStamp,
@@ -107,11 +139,31 @@ bool GraphManager::addBaseStatePriorAtCurrentKey(const double& timeStamp,
 
     m_pimpl->newTimeStamps[poseKey] = m_pimpl->newTimeStamps[velKey]
         = m_pimpl->newTimeStamps[imuBiasKey] = timeStamp;
+    m_pimpl->fullTimeStamps[poseKey] = m_pimpl->fullTimeStamps[velKey]
+        = m_pimpl->fullTimeStamps[imuBiasKey] = timeStamp;
 
     m_pimpl->keyIdxLookupByTimeStamp[timeStamp] = m_pimpl->currentStateIdx;
     m_pimpl->timestampLookupByKeyIdx[m_pimpl->currentStateIdx] = timeStamp;
 
     return true;
+}
+
+void GraphManager::Impl::setupSmartFactorParameters()
+{
+    smartParams.setDegeneracyMode(gtsam::DegeneracyMode::ZERO_ON_DEGENERACY);
+    smartParams.setLinearizationMode(gtsam::LinearizationMode::JACOBIAN_SVD);
+    smartParams.setEnableEPI(false); // set to true, refines triangulation using LM iterations
+    smartParams.setLandmarkDistanceThreshold(20.0); // max distance to triangulate in meters
+    smartParams.setRankTolerance(1.0);
+    smartParams.setRetriangulationThreshold(1e-3);
+    smartParams.setDynamicOutlierRejectionThreshold(8.0); // max acceptable reprojection error
+    smartParams.throwCheirality = false;
+    smartParams.verboseCheirality = false;
+}
+
+void GraphManager::Impl::setupSmartFactorNoiseModel(const double& pixelNoise)
+{
+    smartFactorNoiseModel = gtsam::noiseModel::Isotropic::Sigma(2, pixelNoise);
 }
 
 void GraphManager::resetManager()
@@ -122,7 +174,8 @@ void GraphManager::resetManager()
 
     m_pimpl->keyIdxLookupByTimeStamp.clear();
     m_pimpl->timestampLookupByKeyIdx.clear();
-    m_pimpl->smartArucoLdmk.clear();
+    m_pimpl->smartPointLdmks.clear();
+    m_pimpl->newlyAddedLdmkIds.clear();
     m_pimpl->fullValues.clear();
 
     m_pimpl->resetTemporaryGraph();
@@ -133,6 +186,8 @@ void GraphManager::Impl::resetTemporaryGraph()
     newValues.clear();
     newFactors.resize(0);
     newTimeStamps.clear();
+    smartPointLdmks.clear();
+    newlyAddedLdmkIds.clear();
 }
 
 bool GraphManager::optimize()
@@ -143,12 +198,19 @@ bool GraphManager::optimize()
         // update smoother with only new content
         try
         {
+            m_pimpl->addOrMarkRemovableSmartFactorsToFactorGraph();
+
+            for (auto& factorID : m_pimpl->factorsToRemove)
+            {
+                BipedalLocomotion::log()->warn( "Factor to remove requested to smoother: {}",factorID);
+            }
+
             m_pimpl->smoother.update(m_pimpl->newFactors,
                                      m_pimpl->newValues,
-                                     m_pimpl->newTimeStamps);
+                                     m_pimpl->newTimeStamps,
+                                     m_pimpl->factorsToRemove);
 
             m_pimpl->fullValues = m_pimpl->smoother.calculateEstimate();
-            m_pimpl->smoother.getISAM2Result().print();
         }
         catch (gtsam::IndeterminantLinearSystemException& e)
         {
@@ -221,6 +283,11 @@ bool GraphManager::optimize()
 
         // clear temporary variables
         m_pimpl->resetTemporaryGraph();
+        if (!m_pimpl->updateSmartFactorSlotsFromISAMResult())
+        {
+            BipedalLocomotion::log()->error("{} Could not update smart factor slots."
+                                            " This might cause issues during marginalization.", printPrefix);
+        }
     }
 
     auto poseKey = X(m_pimpl->currentStateIdx);
@@ -236,6 +303,7 @@ bool GraphManager::optimize()
 
 void GraphManager::spawnNewState(const double& timeStamp)
 {
+    const std::string printPrefix{"[GraphManager::spawnNewState]"};
     m_pimpl->previousStateIdx = m_pimpl->currentStateIdx;
     m_pimpl->currentStateIdx++;
 
@@ -246,6 +314,9 @@ void GraphManager::spawnNewState(const double& timeStamp)
     auto currentVelKey{V(m_pimpl->currentStateIdx)};
     auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
 
+    BipedalLocomotion::log()->info("{} Spawned new state idx: {} at ts: {}.",
+                                   printPrefix,
+                                   m_pimpl->currentStateIdx, timeStamp);
     // get time stamp from the spawned state index
     m_pimpl->newTimeStamps[currentPoseKey] = m_pimpl->newTimeStamps[currentVelKey]
         = m_pimpl->newTimeStamps[currentIMUBiasKey] = timeStamp;
@@ -287,42 +358,144 @@ void GraphManager::processPreintegratedIMUMeasurements(
     m_pimpl->newFactors.add(imuFactor);
 }
 
-void GraphManager::processArucoKeyFrames(const ArucoKeyFrame& arucoKF, double pixelNoise)
+void GraphManager::processPointFeatures(const TrackedFeatures& keyFrameFeatures,
+                                        double pixelNoise)
 {
-    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    const auto& featureIds = keyFrameFeatures.points.ids;
+    const auto& uvs = keyFrameFeatures.points.uvs;
 
-    for (const auto& [id, marker] : arucoKF.detectorOut.markers)
+    for (std::size_t idx = 0; idx < featureIds.size(); idx++)
     {
-        auto uv = marker.corners[0];
+        auto uv = uvs[idx];
+        auto id = featureIds[idx];
         // if smart factor related to marker already exists
         // then update the measurement
-        if (m_pimpl->smartArucoLdmk.find(id) != m_pimpl->smartArucoLdmk.end())
+        if (m_pimpl->smartPointLdmks.find(id) != m_pimpl->smartPointLdmks.end())
         {
-            m_pimpl->smartArucoLdmk.at(id)->add(gtsam::Point2(uv.x, uv.y), currentPoseKey);
+            m_pimpl->updatePointFeature(id, uv);
             continue;
         }
 
-        // if smart factor does not exist, add it to the graph
-        auto measNoise = gtsam::noiseModel::Isotropic::Sigma(2, pixelNoise);
-        auto K = boost::make_shared<gtsam::Cal3_S2>(m_pimpl->camK);
-
-        gtsam::SmartProjectionParams smartParams;
-        smartParams.setDegeneracyMode(gtsam::DegeneracyMode::ZERO_ON_DEGENERACY);
-        smartParams.setLinearizationMode(gtsam::LinearizationMode::HESSIAN);
-        smartParams.setEnableEPI(false); // set to true, refines triangulation using LM iterations
-        smartParams.setLandmarkDistanceThreshold(20.0); // max distance to triangulate in meters
-        smartParams.setRankTolerance(1.0);
-        smartParams.setRetriangulationThreshold(1e-3);
-        smartParams.setDynamicOutlierRejectionThreshold(8.0); // max acceptable reprojection error
-        smartParams.throwCheirality = false;
-        smartParams.verboseCheirality = false;
-
-        auto smartAruco = boost::make_shared<SmartFactor>(measNoise, K, arucoKF.b_H_cam, smartParams);
-        m_pimpl->smartArucoLdmk[id] = smartAruco;
-        smartAruco->add(gtsam::Point2(uv.x, uv.y), currentPoseKey);
-
-        m_pimpl->newFactors.add(smartAruco);
+        m_pimpl->addPointFeature(id, uv, pixelNoise);
     }
+}
+
+void GraphManager::Impl::addPointFeature(const long long int& id,
+                                         cv::Point2f uv,
+                                         const double& pixelNoise)
+{
+    auto currentPoseKey{X(currentStateIdx)};
+    // if smart factor does not exist, add it to the graph
+    if (!smartFactorNoiseModel)
+    {
+        setupSmartFactorNoiseModel(pixelNoise);
+    }
+
+    auto smartPoint = boost::make_shared<SmartFactor>(smartFactorNoiseModel,
+                                                      camK,
+                                                      b_H_cam,
+                                                      smartParams);
+    smartPoint->add(gtsam::Point2(uv.x, uv.y), currentPoseKey);
+
+    smartPointLdmks[id] = smartPoint;
+    // this slot=-1 will be updated after calling optimize
+    existingSmartFactorsMap[id] = {smartPoint, -1};
+}
+
+void GraphManager::Impl::updatePointFeature(const long long int& id,
+                                            cv::Point2f uv)
+{
+    auto currentPoseKey{X(currentStateIdx)};
+    smartPointLdmks.at(id)->add(gtsam::Point2(uv.x, uv.y), currentPoseKey);
+}
+
+
+bool GraphManager::Impl::updateSmartFactorSlotsFromISAMResult()
+{
+    // Documentation from Kimera-VIO
+    // BOOKKEEPING: updates the SlotIdx in the existingSmartFactorsMap such that
+    // this idx points to the updated slots in the graph after optimization.
+    // for next iteration to know which slots have to be deleted
+    // before adding the new smart factors.
+    std::string printPrefix{"[GraphManager::Impl::updateSmartFactorSlotsFromISAMResult]"};
+    const auto& result = smoother.getISAM2Result();
+    const auto& factors = smoother.getFactors();
+    const auto& newSlots = result.newFactorsIndices;
+    if (newlyAddedLdmkIds.size() > newSlots.size())
+    {
+        BipedalLocomotion::log()->error("{} Size of newly added point smart factors"
+                                        " seems to be greater than newly added factors."
+                                        " This is not expected.", printPrefix);
+        return false;
+    }
+
+    for (std::size_t idx = 0; idx < newSlots.size(); idx++)
+    {
+        auto& slot = newSlots[idx];
+        auto newlyAddedFactor = boost::dynamic_pointer_cast<SmartFactor>(factors.at(slot));
+        if (newlyAddedFactor)
+        {
+            for (auto& [id, factorWithSlot] : existingSmartFactorsMap)
+            {
+                if (factorWithSlot.first.get() == newlyAddedFactor.get())
+                {
+                    factorWithSlot.second = slot;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool GraphManager::Impl::addOrMarkRemovableSmartFactorsToFactorGraph()
+{
+    std::string printPrefix{"[GraphManager::Impl::addSmartFactorsToFactorGraph]"};
+    auto timeBeforeLag = timestampLookupByKeyIdx[currentStateIdx] - lag;
+    auto marginalizableKeys = findAndMoveKeysBefore(timeBeforeLag);
+    factorsToRemove.clear();
+    for (const auto& [id, newSmartFactor] : smartPointLdmks)
+    {
+        if (existingSmartFactorsMap.find(id) ==
+            existingSmartFactorsMap.end())
+        {
+            BipedalLocomotion::log()->error("{} Smart factor with id: {}"
+                                            " cannot be found in existing smart factors map.",
+                                            printPrefix, id);
+            return false;
+        }
+
+        const auto& existingFactorIt = existingSmartFactorsMap.find(id);
+        auto slotInGraph = existingFactorIt->second.second;
+        if (slotInGraph != -1)
+        {
+            // slot different than the initial value -1
+            // factor has been already added and the slot has been updated
+            // post optimization from the ISAM2 result
+            if (smoother.getFactors().exists(slotInGraph))
+            {
+                auto factor = smoother.getFactors().at(slotInGraph);
+                auto hasMarginalizableKey = factorHasAMarginalizableKey(factor, marginalizableKeys);
+                if (hasMarginalizableKey)
+                {
+                    factorsToRemove.emplace_back(slotInGraph);
+                }
+            }
+            else
+            {
+                // the smart factor has been marginalized out
+                // let's remove it from the existingSmartFactorsMap
+                existingSmartFactorsMap.erase(existingFactorIt);
+            }
+        }
+        else
+        {
+            // add to factor graph
+            newFactors.add(newSmartFactor);
+            newlyAddedLdmkIds.emplace_back(id);
+        }
+    }
+    return true;
 }
 
 void GraphManager::processAbsolutePoseMeasurement(const gtsam::Pose3& absPose,
@@ -357,6 +530,29 @@ void GraphManager::processOdometryMeasurement(const gtsam::Pose3& betweenPose,
     m_pimpl->newFactors.add(betweenFactor);
 }
 
+void GraphManager::processZeroMotionMeasurements(const double& sigmaPos,
+                                                 const double& sigmaRot)
+{
+    auto previousPoseKey{X(m_pimpl->previousStateIdx)};
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto noiseModel = gtsam::noiseModel::Diagonal::Precisions(
+        (gtsam::Vector6() << gtsam::Vector3::Constant(sigmaRot), gtsam::Vector3::Constant(sigmaPos))
+            .finished());
+    auto noMotionFactor = gtsam::BetweenFactor<gtsam::Pose3>(previousPoseKey, currentPoseKey,
+                                                             gtsam::Pose3::identity(), noiseModel);
+    m_pimpl->newFactors.add(noMotionFactor);
+}
+
+void GraphManager::processZeroVelocityMeasurements(const double& sigmaLin)
+{
+    auto currentVelKey{V(m_pimpl->currentStateIdx)};
+    auto noiseModel = gtsam::noiseModel::Isotropic::Sigma(3, sigmaLin);
+    auto zeroVelocityFactor = gtsam::PriorFactor<gtsam::Vector3>(currentVelKey,
+                                                                 gtsam::Vector3::Zero(),
+                                                                 noiseModel);
+    m_pimpl->newFactors.add(zeroVelocityFactor);
+}
+
 const gtsam::IncrementalFixedLagSmoother& GraphManager::smoother() const
 {
     return m_pimpl->smoother;
@@ -364,7 +560,7 @@ const gtsam::IncrementalFixedLagSmoother& GraphManager::smoother() const
 
 const gtsam::NonlinearFactorGraph& GraphManager::graph() const
 {
-    return m_pimpl->newFactors;
+    return m_pimpl->smoother.getFactors();
 }
 
 gtsam::Pose3 GraphManager::getEstimatedBasePose() const
@@ -401,4 +597,52 @@ gtsam::Vector3 GraphManager::getEstimatedBaseLinearVelocity() const
         auto currentVelKey{V(m_pimpl->currentStateIdx)};
         return m_pimpl->fullValues.at<gtsam::Vector3>(currentVelKey);
     }
+}
+
+gtsam::FastList<gtsam::Key> GraphManager::Impl::findAndMoveKeysBefore(double timestamp)
+{
+    gtsam::FastList<gtsam::Key> keys;
+    std::vector<double> removeTimeStamps;
+    auto end = keyIdxLookupByTimeStamp.lower_bound(timestamp);
+    for (auto iter = keyIdxLookupByTimeStamp.begin(); iter != end; ++iter)
+    {
+        keys.emplace_back(X(iter->second));
+        keys.emplace_back(V(iter->second));
+        keys.emplace_back(B(iter->second));
+
+        removeTimeStamps.emplace_back(iter->first);
+    }
+
+    for (const auto& ts : removeTimeStamps)
+    {
+        keyIdxLookupByTimeStamp.erase(ts);
+    }
+
+    return keys;
+}
+
+bool GraphManager::Impl::factorHasAMarginalizableKey(boost::shared_ptr< gtsam::NonlinearFactor> factor,
+                                                    const gtsam::FastList<gtsam::Key>& marginalizableKeys)
+{
+    std::string printPrefix{"[GraphManager::Impl::factorHasAMarginalizableKey]"};
+    if (factor)
+    {
+        BipedalLocomotion::log()->error("{} Invalid pointer to factor.",
+                                        printPrefix);
+        return false;
+    }
+
+    bool factorHasAMarginalizableKey{false};
+    auto affectedKeys = factor->keys();
+    for (const auto& key : marginalizableKeys)
+    {
+        auto it = std::find(affectedKeys.begin(), affectedKeys.end(), key);
+        if (it != affectedKeys.end())
+        {
+            factorHasAMarginalizableKey = true;
+            break;
+        }
+    }
+
+    return factorHasAMarginalizableKey;
 }
