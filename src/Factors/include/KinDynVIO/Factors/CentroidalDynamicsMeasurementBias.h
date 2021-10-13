@@ -14,80 +14,103 @@
 
 namespace gtsam
 {
-class CentroidalDynamicsMeasurementBias
+
+/**
+ * Cumulative centroidal dynamics measurement bias
+ * the biases on the external force torque measurements
+ * are considered to be cumulatively acting on the base frame directly
+ * instead of modeling individual biases on each external force torque measurement.
+ * The latter might lead to observability issues in case of handling
+ * too many external force torque measurements.
+ */
+class CDMBiasCumulative
 {
 private:
-    gtsam::Vector3 biasGyro;
-    gtsam::Vector3 biasNetContactForceInBase;
-    gtsam::Vector3 biasNetContactTorqueInBase;
-    gtsam::Vector3 biasCOMPositionInBase;
+    gtsam::Vector3 m_biasGyro;
+    gtsam::Vector3 m_biasCOMPositionInBase;
+    gtsam::Vector3 m_biasNetExternalForceInBase;
+    gtsam::Vector3 m_biasNetExternalTorqueInBase; // contains net effect of contact force measurement lever arm biases and contact torque measurement biases
 
 public:
     /// dimension of the variable - used to autodetect sizes
-    static const std::size_t dimension = 12;
+    inline static const std::size_t dimension = 12;
 
-    CentroidalDynamicsMeasurementBias();
-    CentroidalDynamicsMeasurementBias(const gtsam::Vector3& bGyro,
-                              const gtsam::Vector3& bNetForceInBase,
-                              const gtsam::Vector3& bNetTorqueInBase,
-                              const gtsam::Vector3& bCOMPositionInBase);
-    CentroidalDynamicsMeasurementBias(const gtsam::Vector12& v);
+    CDMBiasCumulative();
+    CDMBiasCumulative(const gtsam::Vector3& bGyro,
+                      const gtsam::Vector3& bCOMPositionInBase,
+                      const gtsam::Vector3& bNetForceInBase,
+                      const gtsam::Vector3& bNetTorqueInBase);
+    CDMBiasCumulative(const gtsam::Vector12& v);
 
     gtsam::Vector12 vector() const;
 
     const gtsam::Vector3& gyroscope() const;
-    const gtsam::Vector3& netContactForceInBase() const;
-    const gtsam::Vector3& netContactTorqueInBase() const;
     const gtsam::Vector3& comPositionInBase() const;
+    const gtsam::Vector3& netExternalForceInBase() const;
+    const gtsam::Vector3& netExternalTorqueInBase() const;
 
     // Derivatives correspond to
     // H1 = df(y,b)/ db
     // H2 = df(y, b) / dy
     // where f(y, b) = y - bi
     // bi is the i-th bias selector in the set of biases
-    // serialized as bg, bf,btau, bcom
+    // serialized as bg,bcom, bf,btau
     gtsam::Vector3 correctGyroscope(const gtsam::Vector3& measurement,
                                     gtsam::OptionalJacobian<3, 12> H1 = boost::none,
                                     gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
-    gtsam::Vector3 correctNetContactForceInBase(const gtsam::Vector3& measurement,
-                                                gtsam::OptionalJacobian<3, 12> H1 = boost::none,
-                                                gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
-    gtsam::Vector3 correctNetContactTorqueInBase(const gtsam::Vector3& measurement,
-                                                 gtsam::OptionalJacobian<3, 12> H1 = boost::none,
-                                                 gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
     gtsam::Vector3 correctCOMPositionInBase(const gtsam::Vector3& measurement,
                                             gtsam::OptionalJacobian<3, 12> H1 = boost::none,
                                             gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
+    gtsam::Vector3 correctNetExternalForceInBase(const gtsam::Vector3& measurement,
+                                                 gtsam::OptionalJacobian<3, 12> H1 = boost::none,
+                                                 gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
+    gtsam::Vector3 correctNetExternalTorqueInBase(const gtsam::Vector3& measurement,
+                                                  gtsam::OptionalJacobian<3, 12> H1 = boost::none,
+                                                  gtsam::OptionalJacobian<3, 3> H2 = boost::none) const;
 
     /** print with optional string */
     void print(const std::string& s = "") const;
     /** equality up to tolerance */
-    bool equals(const CentroidalDynamicsMeasurementBias& expected, double tol = 1e-5) const;
+    bool equals(const CDMBiasCumulative& other, double tol = 1e-5) const;
 
 
     /** identity for group operation */
-    static CentroidalDynamicsMeasurementBias identity()
+    static CDMBiasCumulative identity()
     {
-      return CentroidalDynamicsMeasurementBias();
+      return CDMBiasCumulative();
     }
 
     /** inverse */
-    CentroidalDynamicsMeasurementBias operator-() const;
+    CDMBiasCumulative operator-() const;
 
     /** addition of vector on right */
-    CentroidalDynamicsMeasurementBias operator+(const gtsam::Vector12& v) const;
+    CDMBiasCumulative operator+(const gtsam::Vector12& v) const;
 
     /** addition */
-    CentroidalDynamicsMeasurementBias operator+(const CentroidalDynamicsMeasurementBias& b) const;
+    CDMBiasCumulative operator+(const CDMBiasCumulative& other) const;
 
     /** subtraction */
-    CentroidalDynamicsMeasurementBias operator-(const CentroidalDynamicsMeasurementBias& b) const;
+    CDMBiasCumulative operator-(const CDMBiasCumulative& other) const;
+
+private:
+    /// @name Advanced Interface
+    /// @{
+
+    /** Serialization function */
+    friend class boost::serialization::access;
+    template<class ARCHIVE>
+    void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
+        ar & BOOST_SERIALIZATION_NVP(m_biasGyro);
+        ar & BOOST_SERIALIZATION_NVP(m_biasCOMPositionInBase);
+        ar & BOOST_SERIALIZATION_NVP(m_biasNetExternalForceInBase);
+        ar & BOOST_SERIALIZATION_NVP(m_biasNetExternalTorqueInBase);
+    }
 
 };
 
 template<>
-struct traits<CentroidalDynamicsMeasurementBias> :
-public internal::VectorSpace<CentroidalDynamicsMeasurementBias> {};
+struct traits<CDMBiasCumulative> :
+public internal::VectorSpace<CDMBiasCumulative> {};
 
 } // namespace gtsam
 

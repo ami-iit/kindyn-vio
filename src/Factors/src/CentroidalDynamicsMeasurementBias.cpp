@@ -11,85 +11,85 @@
 
 using namespace gtsam;
 
-CentroidalDynamicsMeasurementBias::CentroidalDynamicsMeasurementBias()
-    : biasGyro(0., 0., 0.)
-    , biasNetContactForceInBase(0., 0., 0.)
-    , biasNetContactTorqueInBase(0., 0., 0.)
-    , biasCOMPositionInBase(0., 0., 0.)
+CDMBiasCumulative::CDMBiasCumulative()
+    : m_biasGyro(0., 0., 0.)
+    , m_biasCOMPositionInBase(0., 0., 0.)
+    , m_biasNetExternalForceInBase(0., 0., 0.)
+    , m_biasNetExternalTorqueInBase(0., 0., 0.)
 {
 }
 
-CentroidalDynamicsMeasurementBias::CentroidalDynamicsMeasurementBias(
+CDMBiasCumulative::CDMBiasCumulative(
     const gtsam::Vector3& bGyro,
+    const gtsam::Vector3& bCOMPositionInBase,
     const gtsam::Vector3& bNetForceInBase,
-    const gtsam::Vector3& bNetTorqueInBase,
-    const gtsam::Vector3& bCOMPositionInBase)
-    : biasGyro(bGyro)
-    , biasNetContactForceInBase(bNetForceInBase)
-    , biasNetContactTorqueInBase(bNetTorqueInBase)
-    , biasCOMPositionInBase(bCOMPositionInBase)
+    const gtsam::Vector3& bNetTorqueInBase)
+    : m_biasGyro(bGyro)
+    , m_biasCOMPositionInBase(bCOMPositionInBase)
+    , m_biasNetExternalForceInBase(bNetForceInBase)
+    , m_biasNetExternalTorqueInBase(bNetTorqueInBase)
 {
 }
 
-CentroidalDynamicsMeasurementBias::CentroidalDynamicsMeasurementBias(const gtsam::Vector12& v)
-    : biasGyro(v.head<3>())
-    , biasNetContactForceInBase(v.segment<3>(3))
-    , biasNetContactTorqueInBase(v.segment<3>(6))
-    , biasCOMPositionInBase(v.tail<3>())
+CDMBiasCumulative::CDMBiasCumulative(const gtsam::Vector12& v)
+    : m_biasGyro(v.head<3>())
+    , m_biasCOMPositionInBase(v.segment<3>(3))
+    , m_biasNetExternalForceInBase(v.segment<3>(6))
+    , m_biasNetExternalTorqueInBase(v.tail<3>())
 {
 }
 
-gtsam::Vector12 CentroidalDynamicsMeasurementBias::vector() const
+gtsam::Vector12 CDMBiasCumulative::vector() const
 {
     gtsam::Vector12 v;
-    v << biasGyro, biasNetContactForceInBase, biasNetContactTorqueInBase, biasCOMPositionInBase;
+    v << m_biasGyro, m_biasCOMPositionInBase, m_biasNetExternalForceInBase, m_biasNetExternalTorqueInBase;
     return v;
 }
 
-const gtsam::Vector3& CentroidalDynamicsMeasurementBias::gyroscope() const
+const gtsam::Vector3& CDMBiasCumulative::gyroscope() const
 {
-    return biasGyro;
+    return m_biasGyro;
 }
-const gtsam::Vector3& CentroidalDynamicsMeasurementBias::netContactForceInBase() const
+const gtsam::Vector3& CDMBiasCumulative::comPositionInBase() const
 {
-    return biasNetContactForceInBase;
+    return m_biasCOMPositionInBase;
 }
-const gtsam::Vector3& CentroidalDynamicsMeasurementBias::netContactTorqueInBase() const
+const gtsam::Vector3& CDMBiasCumulative::netExternalForceInBase() const
 {
-    return biasNetContactTorqueInBase;
+    return m_biasNetExternalForceInBase;
 }
-const gtsam::Vector3& CentroidalDynamicsMeasurementBias::comPositionInBase() const
+const gtsam::Vector3& CDMBiasCumulative::netExternalTorqueInBase() const
 {
-    return biasCOMPositionInBase;
+    return m_biasNetExternalTorqueInBase;
 }
 
 gtsam::Vector3
-CentroidalDynamicsMeasurementBias::correctGyroscope(const gtsam::Vector3& measurement,
-                                                    gtsam::OptionalJacobian<3, 12> H1,
-                                                    gtsam::OptionalJacobian<3, 3> H2) const
+CDMBiasCumulative::correctGyroscope(const gtsam::Vector3& measurement,
+                                    gtsam::OptionalJacobian<3, 12> H1,
+                                    gtsam::OptionalJacobian<3, 3> H2) const
 {
     using namespace gtsam;
     if (H1)
         (*H1) << -I_3x3, Z_3x3, Z_3x3, Z_3x3;
     if (H2)
         (*H2) << I_3x3;
-    return measurement - biasGyro;
+    return measurement - m_biasGyro;
 }
 
-gtsam::Vector3 CentroidalDynamicsMeasurementBias::correctNetContactForceInBase(
-    const gtsam::Vector3& measurement,
-    gtsam::OptionalJacobian<3, 12> H1,
-    gtsam::OptionalJacobian<3, 3> H2) const
+gtsam::Vector3
+CDMBiasCumulative::correctCOMPositionInBase(const gtsam::Vector3& measurement,
+                                            gtsam::OptionalJacobian<3, 12> H1,
+                                            gtsam::OptionalJacobian<3, 3> H2) const
 {
     using namespace gtsam;
     if (H1)
         (*H1) << Z_3x3, -I_3x3, Z_3x3, Z_3x3;
     if (H2)
         (*H2) << I_3x3;
-    return measurement - biasNetContactForceInBase;
+    return measurement - m_biasCOMPositionInBase;
 }
 
-gtsam::Vector3 CentroidalDynamicsMeasurementBias::correctNetContactTorqueInBase(
+gtsam::Vector3 CDMBiasCumulative::correctNetExternalForceInBase(
     const gtsam::Vector3& measurement,
     gtsam::OptionalJacobian<3, 12> H1,
     gtsam::OptionalJacobian<3, 3> H2) const
@@ -99,78 +99,76 @@ gtsam::Vector3 CentroidalDynamicsMeasurementBias::correctNetContactTorqueInBase(
         (*H1) << Z_3x3, Z_3x3, -I_3x3, Z_3x3;
     if (H2)
         (*H2) << I_3x3;
-    return measurement - biasNetContactTorqueInBase;
+    return measurement - m_biasNetExternalForceInBase;
 }
 
-gtsam::Vector3
-CentroidalDynamicsMeasurementBias::correctCOMPositionInBase(const gtsam::Vector3& measurement,
-                                                            gtsam::OptionalJacobian<3, 12> H1,
-                                                            gtsam::OptionalJacobian<3, 3> H2) const
+gtsam::Vector3 CDMBiasCumulative::correctNetExternalTorqueInBase(
+    const gtsam::Vector3& measurement,
+    gtsam::OptionalJacobian<3, 12> H1,
+    gtsam::OptionalJacobian<3, 3> H2) const
 {
     using namespace gtsam;
     if (H1)
         (*H1) << Z_3x3, Z_3x3, Z_3x3, -I_3x3;
     if (H2)
         (*H2) << I_3x3;
-    return measurement - biasCOMPositionInBase;
+    return measurement - m_biasNetExternalTorqueInBase;
 }
 
-void CentroidalDynamicsMeasurementBias::print(const std::string& s) const
+
+void CDMBiasCumulative::print(const std::string& s) const
 {
-    std::cout << s << " gyro = " << gtsam::Point3(biasGyro)
-              << " net contact force in base = " << gtsam::Point3(biasNetContactForceInBase)
-              << " net contact torque in base = " << gtsam::Point3(biasNetContactTorqueInBase)
-              << " com position in base = " << gtsam::Point3(biasCOMPositionInBase) << std::endl;
+    std::cout << s << " gyro = " << gtsam::Point3(m_biasGyro)
+                   << " com position in base = " << gtsam::Point3(m_biasCOMPositionInBase)
+                   << " net contact force in base = " << gtsam::Point3(m_biasNetExternalForceInBase)
+                   << " net contact torque in base = " << gtsam::Point3(m_biasNetExternalTorqueInBase)
+              << std::endl;
 }
 
-bool CentroidalDynamicsMeasurementBias::equals(const CentroidalDynamicsMeasurementBias& expected,
-                                               double tol) const
+bool CDMBiasCumulative::equals(const CDMBiasCumulative& other,
+                               double tol) const
 {
-    return gtsam::equal_with_abs_tol(biasGyro, expected.biasGyro, tol)
-           && gtsam::equal_with_abs_tol(biasNetContactForceInBase,
-                                        expected.biasNetContactForceInBase,
-                                        tol)
-           && gtsam::equal_with_abs_tol(biasNetContactTorqueInBase,
-                                        expected.biasNetContactTorqueInBase,
-                                        tol)
-           && gtsam::equal_with_abs_tol(biasCOMPositionInBase, expected.biasCOMPositionInBase, tol);
+    return gtsam::equal_with_abs_tol(m_biasGyro, other.m_biasGyro, tol)
+        && gtsam::equal_with_abs_tol(m_biasCOMPositionInBase, other.m_biasCOMPositionInBase, tol)
+        && gtsam::equal_with_abs_tol(m_biasNetExternalForceInBase,
+                                     other.m_biasNetExternalForceInBase,
+                                     tol)
+        && gtsam::equal_with_abs_tol(m_biasNetExternalTorqueInBase,
+                                     other.m_biasNetExternalTorqueInBase,
+                                     tol);
 }
 
-CentroidalDynamicsMeasurementBias CentroidalDynamicsMeasurementBias::operator-() const
+CDMBiasCumulative CDMBiasCumulative::operator-() const
 {
-    return CentroidalDynamicsMeasurementBias(-biasGyro,
-                                             -biasNetContactForceInBase,
-                                             -biasNetContactTorqueInBase,
-                                             -biasCOMPositionInBase);
+    return CDMBiasCumulative(-m_biasGyro,
+                             -m_biasCOMPositionInBase,
+                             -m_biasNetExternalForceInBase,
+                             -m_biasNetExternalTorqueInBase);
 }
 
-CentroidalDynamicsMeasurementBias
-CentroidalDynamicsMeasurementBias::operator+(const gtsam::Vector12& v) const
+CDMBiasCumulative
+CDMBiasCumulative::operator+(const gtsam::Vector12& v) const
 {
-    return CentroidalDynamicsMeasurementBias(biasGyro + v.head<3>(),
-                                             biasNetContactForceInBase + v.segment<3>(3),
-                                             biasNetContactTorqueInBase + v.segment<3>(6),
-                                             biasCOMPositionInBase + v.tail<3>());
+    return CDMBiasCumulative(m_biasGyro + v.head<3>(),
+                             m_biasCOMPositionInBase + v.segment<3>(3),
+                             m_biasNetExternalForceInBase + v.segment<3>(6),
+                             m_biasNetExternalTorqueInBase + v.tail<3>());
 }
 
-CentroidalDynamicsMeasurementBias
-CentroidalDynamicsMeasurementBias::operator+(const CentroidalDynamicsMeasurementBias& b) const
+CDMBiasCumulative
+CDMBiasCumulative::operator+(const CDMBiasCumulative& other) const
 {
-    return CentroidalDynamicsMeasurementBias(biasGyro + b.biasGyro,
-                                             biasNetContactForceInBase
-                                                 + b.biasNetContactForceInBase,
-                                             biasNetContactTorqueInBase
-                                                 + b.biasNetContactTorqueInBase,
-                                             biasCOMPositionInBase + b.biasCOMPositionInBase);
+    return CDMBiasCumulative(m_biasGyro + other.m_biasGyro,
+                             m_biasCOMPositionInBase + other.m_biasCOMPositionInBase,
+                             m_biasNetExternalForceInBase + other.m_biasNetExternalForceInBase,
+                             m_biasNetExternalTorqueInBase + other.m_biasNetExternalTorqueInBase);
 }
 
-CentroidalDynamicsMeasurementBias
-CentroidalDynamicsMeasurementBias::operator-(const CentroidalDynamicsMeasurementBias& b) const
+CDMBiasCumulative
+CDMBiasCumulative::operator-(const CDMBiasCumulative& other) const
 {
-    return CentroidalDynamicsMeasurementBias(biasGyro - b.biasGyro,
-                                             biasNetContactForceInBase
-                                                 - b.biasNetContactForceInBase,
-                                             biasNetContactTorqueInBase
-                                                 - b.biasNetContactTorqueInBase,
-                                             biasCOMPositionInBase - b.biasCOMPositionInBase);
+    return CDMBiasCumulative(m_biasGyro - other.m_biasGyro,
+                             m_biasCOMPositionInBase - other.m_biasCOMPositionInBase,
+                             m_biasNetExternalForceInBase - other.m_biasNetExternalForceInBase,
+                             m_biasNetExternalTorqueInBase - other.m_biasNetExternalTorqueInBase);
 }

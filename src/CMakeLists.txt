@@ -4,5 +4,6 @@
 
 add_subdirectory(TestData)
 add_subdirectory(Perception)
+add_subdirectory(Factors)
 add_subdirectory(Estimators)
 

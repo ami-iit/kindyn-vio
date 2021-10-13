@@ -29,11 +29,11 @@ bool CentroidalDynamicsFactor::equals(const NonlinearFactor& other, double tol) 
 }
 
 gtsam::Vector
-CentroidalDynamicsFactor::evaluateError(const gtsam::Rot3& R_i,
+CentroidalDynamicsFactor::evaluateError(const gtsam::Pose3& H_i,
                                         const gtsam::Vector3& cdot_i,
                                         const gtsam::Vector3& c_i,
                                         const gtsam::Vector3& ha_i,
-                                        const gtsam::Rot3& R_j,
+                                        const gtsam::Pose3& H_j,
                                         const gtsam::Vector3& cdot_j,
                                         const gtsam::Vector3& c_j,
                                         const gtsam::Vector3& ha_j,
@@ -51,10 +51,10 @@ CentroidalDynamicsFactor::evaluateError(const gtsam::Rot3& R_i,
                                         boost::optional<gtsam::Matrix&> H10) const
 {
     // error wrt bias evolution model (random walk)
-    Eigen::Matrix<double, 12, 1> fbias = gtsam::traits<gtsam::CentroidalDynamicsMeasurementBias>::Between(bias_j, bias_j).vector();
+    Eigen::Matrix<double, 12, 1> fbias = gtsam::traits<gtsam::CentroidalDynamicsMeasurementBias>::Between(bias_j, bias_i).vector();
 
-    gtsam::Vector12 rWithoutBias = m_PIM.computeErrorAndJacobians(R_i, cdot_i, c_i, ha_i,
-                                                                  R_j, cdot_j, c_j, ha_j,
+    gtsam::Vector12 rWithoutBias = m_PIM.computeErrorAndJacobians(H_i, cdot_i, c_i, ha_i,
+                                                                  H_j, cdot_j, c_j, ha_j,
                                                                   bias_i, bias_j,
                                                                   H1, H2, H3, H4, H5,
                                                                   H6, H7, H8, H9, H10);

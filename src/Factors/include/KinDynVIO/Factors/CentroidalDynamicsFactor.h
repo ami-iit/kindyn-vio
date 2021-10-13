@@ -35,14 +35,14 @@ namespace Factors
  * Additionally, we also apply a SE_2(3) retraction on the cost function,
  * with base rotation acting on the left-trivialized error of COM position and velocity
  */
-class CentroidalDynamicsFactor : public gtsam::NoiseModelFactor10<gtsam::Rot3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
-                                                                  gtsam::Rot3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+class CentroidalDynamicsFactor : public gtsam::NoiseModelFactor10<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+                                                                  gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
                                                                   gtsam::CentroidalDynamicsMeasurementBias, gtsam::CentroidalDynamicsMeasurementBias>
 {
 private:
    using This = CentroidalDynamicsFactor;
-   using Base = gtsam::NoiseModelFactor10<gtsam::Rot3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
-                                          gtsam::Rot3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+   using Base = gtsam::NoiseModelFactor10<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+                                          gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
                                           gtsam::CentroidalDynamicsMeasurementBias, gtsam::CentroidalDynamicsMeasurementBias>;
    PreintegratedCentroidalDynamicsMeasurements m_PIM;
 public:
@@ -59,17 +59,17 @@ public:
      * r = vec(r_deltaRij, r_deltaCdotij, r_deltaCij, r_deltaHaij, r_deltaBij)
      * where r_deltaBij = vec(r_deltaBGyroij, r_deltaBForceij, r_deltaBTorqueij, r_deltaCOMPositionij)
      * dimension of r is 24
-     * delta = vec(dphi dcdot dc dha dbGyro dbForce dbTorque dbCOMPosition)
-     *
-     * H1 = dr/dphi_i, H2 = dr/dcdot_i, H3 = dr/dc_i, H4 = dr/dha_i
-     * H5 = dr/dphi_j, H6 = dr/dcdot_j, H7 = dr/dc_j, H8 = dr/dha_j
-     * H1 to H8 matrix dimensions (24, 3)
-     *
+     * delta = vec(dpsi dcdot dc dha dbGyro dbForce dbTorque dbCOMPosition)
+     * dpsi = vec(dphi dr)
+     * H1 = dr/dpsi_i, H2 = dr/dcdot_i, H3 = dr/dc_i, H4 = dr/dha_i
+     * H5 = dr/dpsi_j, H6 = dr/dcdot_j, H7 = dr/dc_j, H8 = dr/dha_j
+     * H1, H5  matrix dimensions (24, 6)
+     * H2, H3, H4, H6, H7, H8 matrix dimensions (24, 3)
      * H9 = dr/dbi, H10 = dr/dbj of dimensions (24, 12)
      *
      */
-    gtsam::Vector evaluateError(const gtsam::Rot3& R_i, const gtsam::Vector3& cdot_i, const gtsam::Vector3& c_i, const gtsam::Vector3& ha_i,
-                                const gtsam::Rot3& R_j, const gtsam::Vector3& cdot_j, const gtsam::Vector3& c_j, const gtsam::Vector3& ha_j,
+    gtsam::Vector evaluateError(const gtsam::Pose3& H_i, const gtsam::Vector3& cdot_i, const gtsam::Vector3& c_i, const gtsam::Vector3& ha_i,
+                                const gtsam::Pose3& H_j, const gtsam::Vector3& cdot_j, const gtsam::Vector3& c_j, const gtsam::Vector3& ha_j,
                                 const gtsam::CentroidalDynamicsMeasurementBias& bias_i, const gtsam::CentroidalDynamicsMeasurementBias& bias_j,
                                 boost::optional<gtsam::Matrix&> H1 = boost::none,
                                 boost::optional<gtsam::Matrix&> H2 = boost::none,
