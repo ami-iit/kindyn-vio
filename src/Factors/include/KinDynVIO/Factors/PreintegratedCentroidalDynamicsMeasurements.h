@@ -118,7 +118,7 @@ protected:
     }
 
     // Delta(b_hat) = Delta(b_bar) + J^Delta_b deltab
-    virtual void biasCorrectedDeltas(const BiasType& bias) = 0;
+    virtual gtsam::Vector getBiasCorrections(const BiasType& bias) const = 0;
 
 public:
     /**
@@ -177,7 +177,7 @@ public:
                                                    gtsam::OptionalJacobian<24, 3> H7 = boost::none,
                                                    gtsam::OptionalJacobian<24, 3> H8 = boost::none,
                                                    gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H9 = boost::none,
-                                                   gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10 = boost::none) = 0;
+                                                   gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10 = boost::none) const = 0;
 };
 
 struct CDMModelComputations
@@ -257,8 +257,8 @@ protected:
                                const gtsam::Vector3& dc,
                                const gtsam::Vector3& dha,
                                const Bias& dBias,
-                               const Bias& bias_i);
-    void biasCorrectedDeltas(const Bias& bias) override;
+                               const Bias& bias_i) const;
+    gtsam::Vector getBiasCorrections(const Bias& bias) const override;
 public:
     PreintegratedCDMCumulativeBias();
     PreintegratedCDMCumulativeBias(const std::shared_ptr<Params>& p,
@@ -291,7 +291,7 @@ public:
                                            gtsam::OptionalJacobian<24, 3> H7 = boost::none,
                                            gtsam::OptionalJacobian<24, 3> H8 = boost::none,
                                            gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H9 = boost::none,
-                                           gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10 = boost::none) override;
+                                           gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10 = boost::none) const override;
 
     void print(const std::string& s) const;
     bool equals(const PreintegratedCDMCumulativeBias& other, double tol=1e-9) const;

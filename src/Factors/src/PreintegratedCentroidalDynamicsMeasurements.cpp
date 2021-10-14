@@ -30,6 +30,12 @@ constexpr double massThreshold{1e-6};
 #define rDhaij(r) (r)->segment<3>(9)
 #define rDbiasij(r) (r)->tail<12>()
 
+// some sugars for bias increment vector
+#define dbRij(b) (b)->head<3>()
+#define dbcdotij(b) (b)->segment<3>(3)
+#define dbcij(b) (b)->segment<3>(6)
+#define dbhaij(b) (b)->segment<3>(9)
+
 // some sugars for delta residuals Jacobians
 #define J_rDRij_phi_i(H1)     (H1)->block<3,3>(0,0)
 #define J_rDcdotij_phi_i(H1)  (H1)->block<3,3>(3,0)
@@ -113,7 +119,7 @@ bool PreintegrationCentroidalDynamicsParams::equals(
 //////////////////////////////////////////////////////////////
 PreintegratedCDMCumulativeBias::PreintegratedCDMCumulativeBias()
 {
-    m_gravity = gtsam::Vector3(0., 0., -9.80665);
+    m_gravity = gtsam::Vector3(0., 0., -BipedalLocomotion::Math::StandardAccelerationOfGravitation);
     m_p = std::make_shared<Params>();
     resetIntegration();
 }
@@ -121,7 +127,7 @@ PreintegratedCDMCumulativeBias::PreintegratedCDMCumulativeBias()
 PreintegratedCDMCumulativeBias::PreintegratedCDMCumulativeBias(const std::shared_ptr<Params>& p,
                                                                const Bias& biasHat)
 {
-    m_gravity = gtsam::Vector3(0., 0., -9.80665);
+    m_gravity = gtsam::Vector3(0., 0., -BipedalLocomotion::Math::StandardAccelerationOfGravitation);
     m_p = p;
     resetIntegration();
     m_biasHat = biasHat;
@@ -393,7 +399,6 @@ bool PreintegratedCDMCumulativeBias::update(const std::shared_ptr<iDynTree::KinD
     propagatePreintegrationCovariance(m_currModelComp, m_currGyroComp, dt);
     updateBiasJacobians(m_currModelComp, m_currGyroComp, dt);
 
-    // update bias Jacobians
     return true;
 }
 
@@ -475,9 +480,9 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
     gtsam::OptionalJacobian<24, 3> H7,
     gtsam::OptionalJacobian<24, 3> H8,
     gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H9,
-    gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10)
+    gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H10) const
 {
-    // underlying types are Eigen
+    // underlying gtsam types are Eigen
     // so to be safe not to use auto
     const gtsam::Rot3& R_i = H_i.rotation();
     const gtsam::Rot3& R_i_T = R_i.inverse();
@@ -485,17 +490,17 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
     const gtsam::Rot3 R_i_T_R_j = R_i_T*R_j;
     const gtsam::Vector3 gDtij= m_gravity*m_deltaTij;
 
-    gtsam::Rot3 dR = R_i_T*R_j;
-    gtsam::Vector3 dcDot = R_i_T.rotate(cdot_j - cdot_i - gDtij);
-    gtsam::Vector3 dc = R_i_T.rotate(c_j - c_i - (cdot_i*m_deltaTij) - (0.5*gDtij*m_deltaTij));
-    gtsam::Vector3 dha = R_i_T.rotate(ha_j - ha_i);
-    Bias dBias = bias_j - bias_i;
+    const gtsam::Rot3 dR = R_i_T*R_j;
+    const gtsam::Vector3 dcDot = R_i_T.rotate(cdot_j - cdot_i - gDtij);
+    const gtsam::Vector3 dc = R_i_T.rotate(c_j - c_i - (cdot_i*m_deltaTij) - (0.5*gDtij*m_deltaTij));
+    const gtsam::Vector3 dha = R_i_T.rotate(ha_j - ha_i);
+    const Bias dBias = bias_j - bias_i;
 
-    gtsam::Vector error = computeError(dR, dcDot, dc, dha, dBias, bias_i);
-    gtsam::Vector3 r_DRij = rDRij(&error);
-    gtsam::so3::DexpFunctor Jr_rDRij(r_DRij);
-    gtsam::Matrix3 Jrinv = Jr_rDRij.dexp().inverse();
-    gtsam::so3::ExpmapFunctor Exp_rDRij(r_DRij);
+    const gtsam::Vector error = computeError(dR, dcDot, dc, dha, dBias, bias_i);
+    const gtsam::Vector3 r_DRij = rDRij(&error);
+    const gtsam::so3::DexpFunctor Jr_rDRij(r_DRij);
+    const gtsam::Matrix3 Jrinv = Jr_rDRij.dexp().inverse();
+    const gtsam::so3::ExpmapFunctor Exp_rDRij(r_DRij);
 
     // dr/dpsi_i (where psi_i = [dphi_i, dp_i])
     if (H1)
@@ -582,9 +587,9 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
     if (H9)
     {
         H9->resize(m_residualDim, bDim);
-        auto deltaBias = bias_i.gyroscope() - m_biasHat.gyroscope();
-        gtsam::Matrix3 JrDel = gtsam::so3::DexpFunctor(m_delRdelBiasGyro*deltaBias).dexp();
-        gtsam::Matrix3 ExprDrijT = (Exp_rDRij.expmap().inverse()).matrix();
+        const auto deltaBias = bias_i.gyroscope() - m_biasHat.gyroscope();
+        const gtsam::Matrix3 JrDel = gtsam::so3::DexpFunctor(m_delRdelBiasGyro*deltaBias).dexp();
+        const gtsam::Matrix3 ExprDrijT = (Exp_rDRij.expmap().inverse()).matrix();
 
         J_rDRij_bg_i(H9) = -Jrinv*ExprDrijT*JrDel*m_delRdelBiasGyro;
         J_rDRij_bG_i(H9).setZero();
@@ -626,22 +631,24 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeError(
     const gtsam::Vector3& dc,
     const gtsam::Vector3& dha,
     const Bias& dBias,
-    const Bias& bias_i)
+    const Bias& bias_i) const
 {
     gtsam::Vector r;
     r.resize(m_residualDim);
 
-    biasCorrectedDeltas(bias_i);
-    rDRij(&r) = gtsam::Rot3::Logmap(m_deltaRij.inverse()*dR);
-    rDcdotij(&r) = dcDot - m_deltaCdotij;
-    rDcij(&r) = dc - m_deltaCij;
-    rDhaij(&r) = dha - m_deltaHaij;
+    const gtsam::Vector db = getBiasCorrections(bias_i);
+
+    const auto DRikTilde = m_deltaRij*gtsam::Rot3::Expmap(dbRij(&db));
+    rDRij(&r) = gtsam::Rot3::Logmap(DRikTilde.inverse()*dR);
+    rDcdotij(&r) = dcDot - (m_deltaCdotij + dbcdotij(&db));
+    rDcij(&r) = dc - (m_deltaCij + dbcij(&db));
+    rDhaij(&r) = dha - (m_deltaHaij + dbhaij(&db));
     rDbiasij(&r) = dBias.vector();
 
     return r;
 }
 
-void PreintegratedCDMCumulativeBias::biasCorrectedDeltas(const Bias& bias_i)
+gtsam::Vector PreintegratedCDMCumulativeBias::getBiasCorrections(const Bias& bias_i) const
 {
     const auto biasIncr = bias_i - m_biasHat;
     const gtsam::Vector3& dbg = biasIncr.gyroscope();
@@ -649,9 +656,11 @@ void PreintegratedCDMCumulativeBias::biasCorrectedDeltas(const Bias& bias_i)
     const gtsam::Vector3& dbt = biasIncr.netExternalTorqueInBase();
     const gtsam::Vector3& dbG = biasIncr.comPositionInBase();
 
-    gtsam::Vector3 biasInducedOmega = m_delRdelBiasGyro*dbg;
-    m_deltaRij = m_deltaRij*gtsam::Rot3::Expmap(biasInducedOmega);
-    m_deltaCdotij = m_deltaCdotij + (m_delCdotdelBiasGyro*dbg) + (m_delCdotdelBiasNetForce*dbf);
-    m_deltaCij = m_deltaCij + (m_delCdelBiasGyro*dbg) + (m_delCdelBiasNetForce*dbf);
-    m_deltaHaij = m_deltaHaij + (m_delHadelBiasGyro*dbg) + (m_delHadelBiasNetTorque*dbt) + (m_delHadelBiasCOMPosition*dbG);
+    const gtsam::Vector3 biasInducedOmega = m_delRdelBiasGyro*dbg;
+    gtsam::Vector biasCorrection(12);
+    dbRij(&biasCorrection) = biasInducedOmega;
+    dbcdotij(&biasCorrection) = (m_delCdotdelBiasGyro*dbg) + (m_delCdotdelBiasNetForce*dbf);
+    dbcij(&biasCorrection) = (m_delCdelBiasGyro*dbg) + (m_delCdelBiasNetForce*dbf);
+    dbhaij(&biasCorrection) = (m_delHadelBiasGyro*dbg) + (m_delHadelBiasNetTorque*dbt) + (m_delHadelBiasCOMPosition*dbG);
+    return biasCorrection;
 }

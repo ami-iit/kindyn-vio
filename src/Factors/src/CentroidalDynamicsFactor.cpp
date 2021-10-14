@@ -11,6 +11,24 @@
 
 using namespace KinDynVIO::Factors;
 
+CentroidalDynamicsFactor::CentroidalDynamicsFactor(gtsam::Key pose_i,
+                                                   gtsam::Key cdot_i,
+                                                   gtsam::Key c_i,
+                                                   gtsam::Key ha_i,
+                                                   gtsam::Key pose_j,
+                                                   gtsam::Key cdot_j,
+                                                   gtsam::Key c_j,
+                                                   gtsam::Key ha_j,
+                                                   gtsam::Key bias_i,
+                                                   gtsam::Key bias_j,
+                                                   const PreintegratedCDMCumulativeBias& pim) :
+    Base(gtsam::noiseModel::Gaussian::Covariance(pim.preintMeasCov()),
+         pose_i, cdot_i, c_i, ha_i,
+         pose_j, cdot_j, c_j, ha_j,
+         bias_i, bias_j), m_PIM(pim)
+{
+}
+
 gtsam::NonlinearFactor::shared_ptr CentroidalDynamicsFactor::clone() const
 {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
@@ -20,9 +38,18 @@ gtsam::NonlinearFactor::shared_ptr CentroidalDynamicsFactor::clone() const
 void CentroidalDynamicsFactor::print(const std::string& s,
                                      const gtsam::KeyFormatter& keyFormatter) const
 {
+    std::cout << (s.empty() ? s : s + "\n") << "CentroidalDynamicsFactor("
+              << keyFormatter(this->key1()) << "," << keyFormatter(this->key2()) << ","
+              << keyFormatter(this->key3()) << "," << keyFormatter(this->key4()) << ","
+              << keyFormatter(this->key5()) << "," << keyFormatter(this->key6()) << ","
+              << keyFormatter(this->key7()) << "," << keyFormatter(this->key8()) << ","
+              << keyFormatter(this->key9()) << "," << keyFormatter(this->key10())
+              << ")\n";
+    m_PIM.print("  preintegrated measurements:");
+    this->noiseModel_->print("  noise model: ");
 }
 
-bool CentroidalDynamicsFactor::equals(const NonlinearFactor& other, double tol) const
+bool CentroidalDynamicsFactor::equals(const gtsam::NonlinearFactor& other, double tol) const
 {
     const This* e = dynamic_cast<const This*>(&other);
     return e != nullptr && Base::equals(*e, tol) && m_PIM.equals(e->m_PIM, tol);
@@ -37,8 +64,8 @@ CentroidalDynamicsFactor::evaluateError(const gtsam::Pose3& H_i,
                                         const gtsam::Vector3& cdot_j,
                                         const gtsam::Vector3& c_j,
                                         const gtsam::Vector3& ha_j,
-                                        const gtsam::CentroidalDynamicsMeasurementBias& bias_i,
-                                        const gtsam::CentroidalDynamicsMeasurementBias& bias_j,
+                                        const Bias& bias_i,
+                                        const Bias& bias_j,
                                         boost::optional<gtsam::Matrix&> H1,
                                         boost::optional<gtsam::Matrix&> H2,
                                         boost::optional<gtsam::Matrix&> H3,
@@ -50,15 +77,11 @@ CentroidalDynamicsFactor::evaluateError(const gtsam::Pose3& H_i,
                                         boost::optional<gtsam::Matrix&> H9,
                                         boost::optional<gtsam::Matrix&> H10) const
 {
-    // error wrt bias evolution model (random walk)
-    Eigen::Matrix<double, 12, 1> fbias = gtsam::traits<gtsam::CentroidalDynamicsMeasurementBias>::Between(bias_j, bias_i).vector();
+    gtsam::Vector r = m_PIM.computeErrorAndJacobians(H_i, cdot_i, c_i, ha_i,
+                                                     H_j, cdot_j, c_j, ha_j,
+                                                     bias_i, bias_j,
+                                                     H1, H2, H3, H4, H5,
+                                                     H6, H7, H8, H9, H10);
 
-    gtsam::Vector12 rWithoutBias = m_PIM.computeErrorAndJacobians(H_i, cdot_i, c_i, ha_i,
-                                                                  H_j, cdot_j, c_j, ha_j,
-                                                                  bias_i, bias_j,
-                                                                  H1, H2, H3, H4, H5,
-                                                                  H6, H7, H8, H9, H10);
-    gtsam::Vector r(rWithoutBias.size() + fbias.size());
-    r << rWithoutBias, fbias;
     return r;
 }
