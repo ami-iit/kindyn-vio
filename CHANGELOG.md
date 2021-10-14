@@ -25,3 +25,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `TestData` library to maintain common datasets for test-cases. (https://github.com/dic-iit/kindyn-vio/pull/30)
 - Add `Factors` library containing `NoiseModelFactor10`, `CentroidalDynamicsFactor`, `PreintegratedCDMCumulativeBias` and `CDMBiasCumulative` classes. (https://github.com/ami-iit/kindyn-vio/pull/32).
 - Add `CentroidalDynamicsPreintegrator` class to `Estimators` library wrapping the `CentroidalDynamicsFactor` preintegration into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/ami-iit/kindyn-vio/pull/32).
+- Add iCub walking experiment dataset to `TestData`. (https://github.com/ami-iit/kindyn-vio/pull/33).
