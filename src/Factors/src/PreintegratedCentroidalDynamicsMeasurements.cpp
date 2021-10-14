@@ -71,6 +71,7 @@ constexpr double massThreshold{1e-6};
 
 #define J_rDbiasij_b_j(H10)   (H10)->block<12,12>(12, 0)
 
+// some sugars for noise propagation matrix
 #define A_phi_phi(A)  (A)->block<3,3>(0,0)
 #define A_cdot_phi(A) (A)->block<3,3>(3,0)
 #define A_c_phi(A)    (A)->block<3,3>(6,0)
@@ -150,23 +151,23 @@ bool PreintegratedCDMCumulativeBias::equals(
     ok = ok && m_p->equals(*other.m_p, tol);
     ok = ok && std::abs(m_deltaTij - other.m_deltaTij) < tol;
     ok = ok && m_biasHat.equals(other.m_biasHat);
-    ok = gtsam::equal_with_abs_tol(m_delRdelBiasGyro, other.m_delRdelBiasGyro, tol);
-    ok = gtsam::equal_with_abs_tol(m_delCdelBiasGyro, other.m_delCdelBiasGyro, tol);
-    ok = gtsam::equal_with_abs_tol(m_delCdelBiasNetForce, other.m_delCdelBiasNetForce, tol);
-    ok = gtsam::equal_with_abs_tol(m_delCdotdelBiasGyro, other.m_delCdotdelBiasGyro, tol);
-    ok = gtsam::equal_with_abs_tol(m_delCdotdelBiasNetForce, other.m_delCdotdelBiasNetForce, tol);
-    ok = gtsam::equal_with_abs_tol(m_delHadelBiasGyro, other.m_delHadelBiasGyro, tol);
-    ok = gtsam::equal_with_abs_tol(m_delHadelBiasNetTorque, other.m_delHadelBiasNetTorque, tol);
-    ok = gtsam::equal_with_abs_tol(m_delHadelBiasCOMPosition,
-                                   other.m_delHadelBiasCOMPosition,
-                                   tol);
-    ok = gtsam::equal_with_abs_tol(m_preintMeasCov, other.m_preintMeasCov, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delRdelBiasGyro, other.m_delRdelBiasGyro, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delCdelBiasGyro, other.m_delCdelBiasGyro, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delCdelBiasNetForce, other.m_delCdelBiasNetForce, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delCdotdelBiasGyro, other.m_delCdotdelBiasGyro, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delCdotdelBiasNetForce, other.m_delCdotdelBiasNetForce, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delHadelBiasGyro, other.m_delHadelBiasGyro, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delHadelBiasNetTorque, other.m_delHadelBiasNetTorque, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_delHadelBiasCOMPosition,
+                                         other.m_delHadelBiasCOMPosition,
+                                         tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_preintMeasCov, other.m_preintMeasCov, tol);
 
     // check also for centroidal state
-    ok = gtsam::equal_with_abs_tol(m_deltaRij.matrix(), other.m_deltaRij.matrix(), tol);
-    ok = gtsam::equal_with_abs_tol(m_deltaCdotij, other.m_deltaCdotij, tol);
-    ok = gtsam::equal_with_abs_tol(m_deltaCij, other.m_deltaCij, tol);
-    ok = gtsam::equal_with_abs_tol(m_deltaHaij, other.m_deltaHaij, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_deltaRij.matrix(), other.m_deltaRij.matrix(), tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_deltaCdotij, other.m_deltaCdotij, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_deltaCij, other.m_deltaCij, tol);
+    ok = ok && gtsam::equal_with_abs_tol(m_deltaHaij, other.m_deltaHaij, tol);
 
     return ok;
 }
