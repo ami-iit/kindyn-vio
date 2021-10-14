@@ -66,9 +66,9 @@ public:
     ~CentroidalDynamicsFactor() override = default;
 
     CentroidalDynamicsFactor(const CentroidalDynamicsFactor& ) = default;
-    CentroidalDynamicsFactor& operator=(const CentroidalDynamicsFactor&) = delete;
+    CentroidalDynamicsFactor& operator=(const CentroidalDynamicsFactor&) = default;
     CentroidalDynamicsFactor(CentroidalDynamicsFactor&& other) = default;
-    CentroidalDynamicsFactor& operator=(CentroidalDynamicsFactor&&) = delete;
+    CentroidalDynamicsFactor& operator=(CentroidalDynamicsFactor&&) = default;
 
     gtsam::NonlinearFactor::shared_ptr clone() const override;
     void print(const std::string& s = "",

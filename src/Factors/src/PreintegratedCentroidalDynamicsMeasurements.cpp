@@ -323,8 +323,6 @@ void PreintegratedCDMCumulativeBias::prepareG(const CDMModelComputations& modelC
     const auto threeByTwoM{3/2*m};
     const auto& DRik = gyroComp.DRik.matrix();
 
-    const gtsam::Vector3& B_f_net = modelComp.netUnbiasedExtForceInBase;
-
     // both m_B and m_Sigma_n dimensions
     // might change every step depending
     // on number of external wrenches
@@ -456,7 +454,7 @@ void PreintegratedCDMCumulativeBias::propagatePreintegrationCovariance(const CDM
                                                                        const double& dt)
 {
     prepareA(modelComp, gyroComp, dt);
-    prepareA(modelComp, gyroComp, dt);
+    prepareG(modelComp, gyroComp, dt);
     m_preintMeasCov += m_A*m_preintMeasCov*(m_A.transpose()) + m_G;
 }
 

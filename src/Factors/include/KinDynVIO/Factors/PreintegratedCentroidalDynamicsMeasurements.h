@@ -121,14 +121,15 @@ protected:
     virtual gtsam::Vector getBiasCorrections(const BiasType& bias) const = 0;
 
 public:
+    virtual ~PreintegratedCentroidalDynamicsMeasurements() = default;
     /**
      * Assumes that the kinDyn state is already set with the
      * encoder measurements from the current time step
      * and that the local contact wrenches map consists of contact wrenches
-     * measures at the links whose LinkIndices are available in
+     * measures at the frames whose LinkIndices are available in
      * the kinDyn loaded robot model.
      * KinDynComputations will be used to obtain COM position measurement in base,
-     * relative kinematics between base and the links in contact
+     * relative kinematics between base and the frames in contact
      *
      * @warning not thread-safe
      */
@@ -138,6 +139,16 @@ public:
                         const double& dt) = 0;
     virtual void resetIntegration() = 0;
     virtual void resetIntegrationAndSetBias(const Bias& biasHat) = 0;
+
+    const gtsam::Vector3& gravity() const
+    {
+        return m_gravity;
+    }
+
+    void setGravity(const gtsam::Vector3& g)
+    {
+        m_gravity = g;
+    }
 
     /// check parameters equality: checks whether shared pointer points to same Params object.
     bool matchesParamsWith(const PreintegratedCentroidalDynamicsMeasurements<BiasType>& other) const
@@ -209,7 +220,7 @@ class PreintegratedCDMCumulativeBias :
         public PreintegratedCentroidalDynamicsMeasurements<gtsam::CDMBiasCumulative>
 {
 protected:
-    const std::size_t m_residualDim{24};
+    std::size_t m_residualDim{24};
     // Bias update Jacobians
     gtsam::Matrix3 m_delRdelBiasGyro;
     gtsam::Matrix3 m_delCdotdelBiasGyro, m_delCdotdelBiasNetForce;
@@ -263,6 +274,12 @@ public:
     PreintegratedCDMCumulativeBias();
     PreintegratedCDMCumulativeBias(const std::shared_ptr<Params>& p,
                                    const Bias& biasHat = Bias());
+    ~PreintegratedCDMCumulativeBias() override = default;
+
+    PreintegratedCDMCumulativeBias(const PreintegratedCDMCumulativeBias& ) = default;
+    PreintegratedCDMCumulativeBias& operator=(const PreintegratedCDMCumulativeBias&) = default;
+    PreintegratedCDMCumulativeBias(PreintegratedCDMCumulativeBias&& other) = default;
+    PreintegratedCDMCumulativeBias& operator=(PreintegratedCDMCumulativeBias&&) = default;
 
     void resetIntegration() override;
     void resetIntegrationAndSetBias(const Bias& biasHat) override;
