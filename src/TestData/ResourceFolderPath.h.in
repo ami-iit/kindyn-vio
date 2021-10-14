@@ -28,5 +28,25 @@ inline std::string getMinimumArucoImagesDirectoryPath()
     return std::string(SOURCE_CONFIG_DIR) + "/min-data/";
 }
 
+inline std::string getWalkingArucoImagesDirectoryPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/walking/rgbImage_o/";
+}
+
+inline std::string getWalkingArucoDataset()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/walking/sync-walkingFrontAndBackGoodTrial.mat";
+}
+
+inline std::string getWalkingArucoImageFileNamesTxt()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/walking/sync-walkingFrontAndBackGoodTrial-imgFileNames.txt";
+}
+
+inline std::string getiCubGenova04ModelPath()
+{
+    return std::string(SOURCE_CONFIG_DIR) + "/models/iCubGenova04.urdf";
+}
+
 #endif // RESOURCE_FOLDER_H_IN
 
