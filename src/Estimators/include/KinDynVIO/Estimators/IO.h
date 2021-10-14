@@ -51,6 +51,13 @@ struct IMUPreintegratorOutput
     PreintegratorStatus status;
 };
 
+template <typename PreintegratedMeasurements>
+struct CentroidalDynamicsPreintegratorOutput
+{
+    PreintegratedMeasurements preInt;
+    PreintegratorStatus status;
+};
+
 struct ArucoWrapperInput
 {
     gtsam::Pose3 Xhat; // predicted base link pose
