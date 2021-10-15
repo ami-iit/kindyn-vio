@@ -34,7 +34,8 @@ public:
     gtsam::Pose3 bHImu;
 
     gtsam::Vector3 gravity;
-    Eigen::Matrix<double, 12, 1> biasInitial;
+    Eigen::Matrix<double, 6, 1> imuBiasInitial;
+    Eigen::Matrix<double, 9, 1> cdmBiasInitial;
     Eigen::Matrix3d I3;
     Eigen::Matrix4d basePose;
     Eigen::Matrix<double, 6, 1> baseTwist;
@@ -44,7 +45,8 @@ CentroidalDynamicsCumulativeBiasPreintegrator::CentroidalDynamicsCumulativeBiasP
 {
     m_kinDyn = std::make_shared<iDynTree::KinDynComputations>();
     m_pimpl = std::make_unique<CentroidalDynamicsCumulativeBiasPreintegrator::Impl>();
-    m_pimpl->biasInitial.setZero();
+    m_pimpl->imuBiasInitial.setZero();
+    m_pimpl->cdmBiasInitial.setZero();
     m_pimpl->I3.setIdentity();
     m_pimpl->bHImu.identity();
     m_pimpl->basePose.setIdentity();
@@ -92,7 +94,8 @@ bool CentroidalDynamicsCumulativeBiasPreintegrator::initialize(
     handle->getParameter("sigma_b_ext_torque", m_pimpl->sigmaBiasExtTorque);
     handle->getParameter("sigma_b_com_pos", m_pimpl->sigmaBiasCOMPosition);
 
-    handle->getParameter("initial_bias", m_pimpl->biasInitial);
+    handle->getParameter("initial_imu_bias", m_pimpl->imuBiasInitial);
+    handle->getParameter("initial_cdm_bias", m_pimpl->cdmBiasInitial);
     handle->getParameter("gravity", m_pimpl->gravity);
 
     if (!handle->getParameter("base_link_name", m_pimpl->baseLinkName))
@@ -157,9 +160,10 @@ bool CentroidalDynamicsCumulativeBiasPreintegrator::initialize(
     m_pimpl->params->setBaseLinkName(m_pimpl->baseLinkName);
     m_pimpl->params->setBaseHIMU(m_pimpl->bHImu);
 
-    gtsam::CDMBiasCumulative bias(m_pimpl->biasInitial);
+    gtsam::CDMBiasCumulative cdmBias(m_pimpl->cdmBiasInitial);
+    gtsam::imuBias::ConstantBias imuBias(m_pimpl->imuBiasInitial);
     m_pimpl->cdmPreInt
-        = std::make_shared<PreintegratedCDMCumulativeBias>(m_pimpl->params, bias);
+        = std::make_shared<PreintegratedCDMCumulativeBias>(m_pimpl->params, imuBias, cdmBias);
     m_pimpl->cdmPreInt->setGravity(m_pimpl->gravity);
 
     m_pimpl->initialized = true;
@@ -241,10 +245,11 @@ bool CentroidalDynamicsCumulativeBiasPreintegrator::isOutputValid() const
     return m_pimpl->initialized;
 }
 
-void CentroidalDynamicsCumulativeBiasPreintegrator::resetIntegration(const gtsam::CDMBiasCumulative& bias)
+void CentroidalDynamicsCumulativeBiasPreintegrator::resetIntegration(const gtsam::imuBias::ConstantBias& imuBias,
+                                                                     const gtsam::CDMBiasCumulative& cdmBias)
 {
     m_status = PreintegratorStatus::IDLE;
-    m_pimpl->cdmPreInt->resetIntegrationAndSetBias(bias);
+    m_pimpl->cdmPreInt->resetIntegrationAndSetBias(imuBias, cdmBias);
     // just to be sure reset again
     m_pimpl->cdmPreInt->resetIntegration();
 }

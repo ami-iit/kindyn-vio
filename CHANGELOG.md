@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modified `IMUPreintegrator` class to account only for preintegrated measurements by refactoring the factor out of the class. (https://github.com/dic-iit/kindyn-vio/pull/30)
 - Move `KinDynVIO::Perception::TimeStampedImg` from `KinDynVIO/Perception/Features/ImageProcessor.h` to `KinDynVIO/Perception/Features/DataTypes.h`. (https://github.com/dic-iit/kindyn-vio/pull/30)
 - Move Estimator relevant input-output data structures to a `IO.h` file in `Estimators` library.
+- Remove gyroscope bias from `CDMBiasCumulative` in order to reuse the bias state from `gtsam::imuBias::ConstantBias`. Propagate relevant changes in Centroidal Dynamics Factor related classes. (https://github.com/ami-iit/kindyn-vio/pull/34). 
 
 ### Added
 - Implement `PerceptionCameraModels` library containing `PinHoleCamera` class.

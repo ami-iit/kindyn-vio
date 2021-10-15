@@ -5,5 +5,5 @@
 add_kindyn_vio_test(
 NAME CentroidalDynamicsFactor
 SOURCES CentroidalDynamicsFactorTest.cpp
-LINKS  KinDynVIO::Factors BipedalLocomotion::Math)
+LINKS  KinDynVIO::TestData KinDynVIO::Factors BipedalLocomotion::Math)
 

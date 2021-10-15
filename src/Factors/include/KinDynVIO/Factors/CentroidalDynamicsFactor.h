@@ -15,7 +15,7 @@
 
 #include <KinDynVIO/Factors/CentroidalDynamicsMeasurementBias.h>
 #include <KinDynVIO/Factors/PreintegratedCentroidalDynamicsMeasurements.h>
-#include <KinDynVIO/Factors/NoiseModelFactor10.h>
+#include <KinDynVIO/Factors/NoiseModelFactorCustom.h>
 #include <memory>
 
 namespace KinDynVIO
@@ -37,16 +37,16 @@ namespace Factors
  * In 2021 IEEE International Conference on Robotics and Automation-ICRA.
  */
 
-class CentroidalDynamicsFactor : public gtsam::NoiseModelFactor10<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+class CentroidalDynamicsFactor : public gtsam::NoiseModelFactor12<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
                                                                   gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
-                                                                  gtsam::CDMBiasCumulative, gtsam::CDMBiasCumulative>
+                                                                  ImuBias, gtsam::CDMBiasCumulative, ImuBias, gtsam::CDMBiasCumulative>
 {
 private:
-    using Bias = gtsam::CDMBiasCumulative;
+    using CDMBias = gtsam::CDMBiasCumulative;
     using This = CentroidalDynamicsFactor;
-    using Base = gtsam::NoiseModelFactor10<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
-                                          gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
-                                          Bias, Bias>;
+    using Base = gtsam::NoiseModelFactor12<gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+                                           gtsam::Pose3, gtsam::Vector3, gtsam::Vector3, gtsam::Vector3,
+                                           ImuBias, CDMBias, ImuBias, CDMBias>;
    PreintegratedCDMCumulativeBias m_PIM;
 public:
     using shared_ptr = boost::shared_ptr<This>;
@@ -59,8 +59,10 @@ public:
                              gtsam::Key cdot_j,
                              gtsam::Key c_j,
                              gtsam::Key ha_j,
-                             gtsam::Key bias_i,
-                             gtsam::Key bias_j,
+                             gtsam::Key imuBias_i,
+                             gtsam::Key cdmBias_i,
+                             gtsam::Key imuBias_j,
+                             gtsam::Key cdmBias_j,
                              const PreintegratedCDMCumulativeBias& pim);
 
     ~CentroidalDynamicsFactor() override = default;
@@ -93,8 +95,8 @@ public:
      * H5 = dr/dpsi_j, H6 = dr/dcdot_j, H7 = dr/dc_j, H8 = dr/dha_j
      * H1, H5  matrix dimensions (24, 6)
      * H2, H3, H4, H6, H7, H8 matrix dimensions (24, 3)
-     * H9 = dr/dbi, H10 = dr/dbj of dimensions (24, 12)
-     *
+     * H9 = dr/dbi_imu, H11 = dr/dbj_imu of dimensions (24, 6)
+     * H10 = dr/dbi_cdm, H12 = dr/dbj_cdm of dimensions (24, 9)
      */
     gtsam::Vector evaluateError(const gtsam::Pose3& H_i,
                                 const gtsam::Vector3& cdot_i,
@@ -104,8 +106,10 @@ public:
                                 const gtsam::Vector3& cdot_j,
                                 const gtsam::Vector3& c_j,
                                 const gtsam::Vector3& ha_j,
-                                const Bias& bias_i,
-                                const Bias& bias_j,
+                                const ImuBias& imuBias_i,
+                                const CDMBias& cdmBias_i,
+                                const ImuBias& imuBias_j,
+                                const CDMBias& cdmBias_j,
                                 boost::optional<gtsam::Matrix&> H1 = boost::none,
                                 boost::optional<gtsam::Matrix&> H2 = boost::none,
                                 boost::optional<gtsam::Matrix&> H3 = boost::none,
@@ -115,7 +119,9 @@ public:
                                 boost::optional<gtsam::Matrix&> H7 = boost::none,
                                 boost::optional<gtsam::Matrix&> H8 = boost::none,
                                 boost::optional<gtsam::Matrix&> H9 = boost::none,
-                                boost::optional<gtsam::Matrix&> H10 = boost::none) const override;
+                                boost::optional<gtsam::Matrix&> H10 = boost::none,
+                                boost::optional<gtsam::Matrix&> H11 = boost::none,
+                                boost::optional<gtsam::Matrix&> H12 = boost::none) const override;
 
     const PreintegratedCDMCumulativeBias& preintegratedMeasurements() const
     {
