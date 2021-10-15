@@ -84,7 +84,8 @@ public:
 
 
     virtual void resetIntegration() final;
-    virtual void resetIntegration(const gtsam::CDMBiasCumulative& bias);
+    virtual void resetIntegration(const gtsam::imuBias::ConstantBias& imuBias,
+                                  const gtsam::CDMBiasCumulative& cdmBias);
 
     void startPreintegration(const double& prevTimeStamp  = 0.0) override;
     void stopPreintegration() override;

@@ -19,13 +19,15 @@ CentroidalDynamicsFactor::CentroidalDynamicsFactor(gtsam::Key pose_i,
                                                    gtsam::Key cdot_j,
                                                    gtsam::Key c_j,
                                                    gtsam::Key ha_j,
-                                                   gtsam::Key bias_i,
-                                                   gtsam::Key bias_j,
+                                                   gtsam::Key imuBias_i,
+                                                   gtsam::Key cdmBias_i,
+                                                   gtsam::Key imuBias_j,
+                                                   gtsam::Key cdmBias_j,
                                                    const PreintegratedCDMCumulativeBias& pim) :
     Base(gtsam::noiseModel::Gaussian::Covariance(pim.preintMeasCov()),
          pose_i, cdot_i, c_i, ha_i,
          pose_j, cdot_j, c_j, ha_j,
-         bias_i, bias_j), m_PIM(pim)
+         imuBias_i, cdmBias_i, imuBias_j, cdmBias_j), m_PIM(pim)
 {
 }
 
@@ -43,7 +45,8 @@ void CentroidalDynamicsFactor::print(const std::string& s,
               << keyFormatter(this->key3()) << "," << keyFormatter(this->key4()) << ","
               << keyFormatter(this->key5()) << "," << keyFormatter(this->key6()) << ","
               << keyFormatter(this->key7()) << "," << keyFormatter(this->key8()) << ","
-              << keyFormatter(this->key9()) << "," << keyFormatter(this->key10())
+              << keyFormatter(this->key9()) << "," << keyFormatter(this->key10()) << ","
+              << keyFormatter(this->key11()) << "," << keyFormatter(this->key12())
               << ")\n";
     m_PIM.print("  preintegrated measurements:");
     this->noiseModel_->print("  noise model: ");
@@ -64,8 +67,10 @@ CentroidalDynamicsFactor::evaluateError(const gtsam::Pose3& H_i,
                                         const gtsam::Vector3& cdot_j,
                                         const gtsam::Vector3& c_j,
                                         const gtsam::Vector3& ha_j,
-                                        const Bias& bias_i,
-                                        const Bias& bias_j,
+                                        const ImuBias& imuBias_i,
+                                        const CDMBias& cdmBias_i,
+                                        const ImuBias& imuBias_j,
+                                        const CDMBias& cdmBias_j,
                                         boost::optional<gtsam::Matrix&> H1,
                                         boost::optional<gtsam::Matrix&> H2,
                                         boost::optional<gtsam::Matrix&> H3,
@@ -75,13 +80,16 @@ CentroidalDynamicsFactor::evaluateError(const gtsam::Pose3& H_i,
                                         boost::optional<gtsam::Matrix&> H7,
                                         boost::optional<gtsam::Matrix&> H8,
                                         boost::optional<gtsam::Matrix&> H9,
-                                        boost::optional<gtsam::Matrix&> H10) const
+                                        boost::optional<gtsam::Matrix&> H10,
+                                        boost::optional<gtsam::Matrix&> H11,
+                                        boost::optional<gtsam::Matrix&> H12) const
 {
     gtsam::Vector r = m_PIM.computeErrorAndJacobians(H_i, cdot_i, c_i, ha_i,
                                                      H_j, cdot_j, c_j, ha_j,
-                                                     bias_i, bias_j,
+                                                     imuBias_i, cdmBias_i,
+                                                     imuBias_j, cdmBias_j,
                                                      H1, H2, H3, H4, H5,
-                                                     H6, H7, H8, H9, H10);
+                                                     H6, H7, H8, H9, H10, H11, H12);
 
     return r;
 }

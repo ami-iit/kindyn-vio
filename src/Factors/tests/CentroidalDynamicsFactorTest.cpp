@@ -12,18 +12,19 @@
 
 #include <KinDynVIO/Factors/CentroidalDynamicsMeasurementBias.h>
 #include <KinDynVIO/Factors/PreintegratedCentroidalDynamicsMeasurements.h>
-// #include <KinDynVIO/Factors/CentroidalDynamicsFactor.h>
+#include <KinDynVIO/Factors/CentroidalDynamicsFactor.h>
+
+#include <KinDynVIO/TestData/EstimatorTestUtils.h>
 
 using namespace KinDynVIO::Factors;
 
 TEST_CASE("Cumulative CentroidalDynamics Measurement Bias Test")
 {
-    Eigen::Matrix<double, 12, 1> v1 = Eigen::Matrix<double, 12, 1>::Random();
-    Eigen::Matrix<double, 12, 1> v2 = Eigen::Matrix<double, 12, 1>::Random();
+    Eigen::Matrix<double, 9, 1> v1 = Eigen::Matrix<double, 9, 1>::Random();
+    Eigen::Matrix<double, 9, 1> v2 = Eigen::Matrix<double, 9, 1>::Random();
     gtsam::CDMBiasCumulative b1(v1);
     gtsam::CDMBiasCumulative b2(gtsam::Vector3(v2.head<3>()),
                                 gtsam::Vector3(v2.segment<3>(3)),
-                                gtsam::Vector3(v2.segment<3>(6)),
                                 gtsam::Vector3(v2.tail<3>()));
 
     auto bplusb = b1 + b2;
