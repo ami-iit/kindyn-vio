@@ -95,8 +95,8 @@ public:
      * H5 = dr/dpsi_j, H6 = dr/dcdot_j, H7 = dr/dc_j, H8 = dr/dha_j
      * H1, H5  matrix dimensions (24, 6)
      * H2, H3, H4, H6, H7, H8 matrix dimensions (24, 3)
-     * H9 = dr/dbi_imu, H10 = dr/dbj_imu of dimensions (24, 6)
-     * H11 = dr/dbi_cdm, H12 = dr/dbj_cdm of dimensions (24, 9)
+     * H9 = dr/dbi_imu, H11 = dr/dbj_imu of dimensions (24, 6)
+     * H10 = dr/dbi_cdm, H12 = dr/dbj_cdm of dimensions (24, 9)
      */
     gtsam::Vector evaluateError(const gtsam::Pose3& H_i,
                                 const gtsam::Vector3& cdot_i,
