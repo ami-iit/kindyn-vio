@@ -28,8 +28,6 @@ namespace Factors
  * in below referenced paper.
  * The difference from the original paper is that, in this implementation
  * we consider additional bias terms on the cumulative external wrenches acting on the base link
- * Additionally, we also apply a SE_2(3) retraction on the cost function,
- * with base rotation acting on the left-trivialized error of COM position and velocity
  *
  * If you are using the factor, please cite:
  * Fourmy, M., Flayols, T., Mansard, N. and Solà, J., 2021, May.

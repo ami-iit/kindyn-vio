@@ -207,13 +207,13 @@ bool CentroidalDynamicsCumulativeBiasPreintegrator::advance()
     if (m_status == PreintegratorStatus::PREINTEGRATING)
     {
         // setting base pose and twist to identity and zero respectively
-        if (m_kinDyn->setRobotState(m_pimpl->basePose,
-                                    m_pimpl->input.meas.encoders,
-                                    m_pimpl->baseTwist,
-                                    m_pimpl->input.meas.encodersSpeed,
-                                    m_pimpl->cdmPreInt->gravity()))
+        if (!m_kinDyn->setRobotState(m_pimpl->basePose,
+                                     m_pimpl->input.meas.encoders,
+                                     m_pimpl->baseTwist,
+                                     m_pimpl->input.meas.encodersSpeed,
+                                     m_pimpl->cdmPreInt->gravity()))
         {
-            BipedalLocomotion::log()->error("{} Could not set KinDynComputations robto state.", printPrefix);
+            BipedalLocomotion::log()->error("{} Could not set KinDynComputations robot state.", printPrefix);
             return false;
         }
 

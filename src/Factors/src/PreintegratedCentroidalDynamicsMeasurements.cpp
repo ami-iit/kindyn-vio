@@ -285,9 +285,9 @@ void PreintegratedCDMCumulativeBias::updateCDMGyroComputations(const gtsam::Vect
 {
     // DRkk+1  = DRik.T DRik+1 = Exp(omega dt)
     m_currGyroComp.unbiasedGyro = m_imuBiasHat.correctGyroscope(localGyroMeas);
-
     const gtsam::Vector3& omegaBar = m_currGyroComp.unbiasedGyro;
     m_currGyroComp.DRkkplusone = gtsam::Rot3::Expmap(omegaBar*dt);
+
     m_currGyroComp.Jr = gtsam::so3::DexpFunctor(omegaBar*dt).dexp();
     m_currGyroComp.DRik = m_deltaRij;
 }
@@ -317,7 +317,7 @@ void PreintegratedCDMCumulativeBias::prepareA(const CDMModelComputations& modelC
 
     A_phi_phi(&m_A) = DRkkplusone.inverse().matrix();
     A_cdot_phi(&m_A)= -(1/m)*DRik*Sf*dt;
-    A_c_phi(&m_A) = -(3/2*m)*DRik*Sf*dtSq;
+    A_c_phi(&m_A) = -(1.5/m)*DRik*Sf*dtSq;
     A_ha_phi(&m_A) = -DRik*Stau*dt;
 }
 
@@ -325,18 +325,21 @@ void PreintegratedCDMCumulativeBias::prepareG(const CDMModelComputations& modelC
                                               const CDMGyroComputations& gyroComp,
                                               const double& dt)
 {
+    // obsDim = dim(gyro, com position, external wrenches)
     const std::size_t obsDim = 6 + modelComp.nrExtWrenches*6;
+    // obsWBiasDim = obsDim + dim(gyroBias, cdmBias)
+    const std::size_t obsWBiasDim = obsDim + 3 + gtsam::CDMBiasCumulative::dimension;
     const auto& m = modelComp.mass;
     const auto oneByM = (1/m);
-    const auto threeByTwoM{3/2*m};
+    const auto threeByTwoM{1.5/m};
     const auto& DRik = gyroComp.DRik.matrix();
 
     // both m_B and m_Sigma_n dimensions
     // might change every step depending
     // on number of external wrenches
-    m_B.resize(m_residualDim, obsDim);
+    m_B.resize(m_residualDim, obsWBiasDim);
     m_B.setZero();
-    m_Sigma_n.resize(obsDim, obsDim);
+    m_Sigma_n.resize(obsWBiasDim, obsWBiasDim);
     m_Sigma_n.setZero();
 
     const std::size_t comIdxOffset = 3 + modelComp.nrExtWrenches*6;
@@ -378,6 +381,8 @@ void PreintegratedCDMCumulativeBias::prepareG(const CDMModelComputations& modelC
     m_Sigma_n.block<3,3>(bfOffset, bfOffset) = m_p->getContactForceBiasCovariance();
     m_Sigma_n.block<3,3>(btOffset, btOffset) = m_p->getContactTorqueBiasCovariance();
 
+    m_B.block<12, 12>(12, bgOffset).setIdentity();
+
     m_G = m_B*m_Sigma_n*(m_B.transpose());
 }
 
@@ -403,6 +408,7 @@ bool PreintegratedCDMCumulativeBias::update(const std::shared_ptr<iDynTree::KinD
         return false;
     }
 
+    m_deltaTij += dt;
     updatePreintegratedMeasurements(m_currModelComp, m_currGyroComp, dt);
     propagatePreintegrationCovariance(m_currModelComp, m_currGyroComp, dt);
     updateBiasJacobians(m_currModelComp, m_currGyroComp, dt);
@@ -422,7 +428,7 @@ void PreintegratedCDMCumulativeBias::updatePreintegratedMeasurements(const CDMMo
 
     m_deltaRij = m_deltaRij*ExpOmegaDt;
     m_deltaCdotij += (1/m)*DRik.rotate(B_f_net)*dt;
-    m_deltaCij += (3/2*m)*DRik.rotate(B_f_net)*dt*dt;
+    m_deltaCij += (1.5/m)*DRik.rotate(B_f_net)*dt*dt;
     m_deltaHaij += DRik.rotate(B_tau_net)*dt;
 }
 
@@ -433,7 +439,7 @@ void PreintegratedCDMCumulativeBias::updateBiasJacobians(const CDMModelComputati
     double dtSq{dt*dt};
     const auto& m = modelComp.mass;
     const double oneByM = (1/m);
-    const double threeByTwoM = (3/2*m);
+    const double threeByTwoM = (1.5/m);
     const gtsam::Matrix3& DRik = gyroComp.DRik.matrix();
 
     const auto& DRkkplusone = gyroComp.DRkkplusone;
@@ -538,9 +544,9 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
         H2->resize(m_residualDim, 3);
         H2->setZero();
         // H22 = dr_DCdotij/dcdot_i
-        J_rDcdotij_cdot_i(H2) = -gtsam::I_3x3;
+        J_rDcdotij_cdot_i(H2) = -R_i_T.matrix();
         // H32 = dr_DCij/dcdot_i
-        J_rDcij_cdot_i(H2) = -gtsam::I_3x3*m_deltaTij;
+        J_rDcij_cdot_i(H2) = -R_i_T.matrix()*m_deltaTij;
     }
 
     // dr/dc_i
@@ -549,7 +555,7 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
         H3->resize(m_residualDim, 3);
         H3->setZero();
         // H33 = dr_DCij/dc_i
-        J_rDcij_c_i(H3) = -gtsam::I_3x3;
+        J_rDcij_c_i(H3) = -R_i_T.matrix();
     }
 
     // dr/dha_i
@@ -576,7 +582,7 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
         H6->resize(m_residualDim, 3);
         H6->setZero();
         // H26 = dr_DCdotij/dcdot_j
-        J_rDcdotij_cdot_j(H6) = R_i_T_R_j.matrix();
+        J_rDcdotij_cdot_j(H6) = R_i_T.matrix();
     }
 
     // dr/dc_j
@@ -585,7 +591,7 @@ gtsam::Vector PreintegratedCDMCumulativeBias::computeErrorAndJacobians(
         H7->resize(m_residualDim, 3);
         H7->setZero();
         // H37 = dr_DCij/dc_j
-        J_rDcij_c_j(H7) = R_i_T_R_j.matrix();
+        J_rDcij_c_j(H7) = R_i_T.matrix();
     }
 
     // dr/dha_j
