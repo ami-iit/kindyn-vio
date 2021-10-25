@@ -86,6 +86,7 @@ constexpr double massThreshold{1e-6};
 #define A_phi_phi(A)  (A)->block<3,3>(0,0)
 #define A_cdot_phi(A) (A)->block<3,3>(3,0)
 #define A_c_phi(A)    (A)->block<3,3>(6,0)
+#define A_c_cdot(A)   (A)->block<3,3>(6,3)
 #define A_ha_phi(A)   (A)->block<3,3>(9,0)
 
 
@@ -228,7 +229,7 @@ bool PreintegratedCDMCumulativeBias::updateCDMModelComputations(const std::share
     m_currModelComp.contactFrameLeverArmsInBase.clear();
     m_currModelComp.contactFrameRotationsInBase.clear();
     m_currModelComp.netExtForceInBase.setZero();
-    m_currModelComp.netExtForceInBase.setZero();
+    m_currModelComp.netExtTorqueInBase.setZero();
     m_currModelComp.netUnbiasedExtForceInBase.setZero();
     m_currModelComp.netUnbiasedExtTorqueInBase.setZero();
 
@@ -317,7 +318,8 @@ void PreintegratedCDMCumulativeBias::prepareA(const CDMModelComputations& modelC
 
     A_phi_phi(&m_A) = DRkkplusone.inverse().matrix();
     A_cdot_phi(&m_A)= -(1/m)*DRik*Sf*dt;
-    A_c_phi(&m_A) = -(1.5/m)*DRik*Sf*dtSq;
+    A_c_phi(&m_A) = -(0.5/m)*DRik*Sf*dtSq;
+    A_c_cdot(&m_A) = gtsam::I_3x3*dt;
     A_ha_phi(&m_A) = -DRik*Stau*dt;
 }
 
@@ -425,10 +427,11 @@ void PreintegratedCDMCumulativeBias::updatePreintegratedMeasurements(const CDMMo
     const auto& ExpOmegaDt = gyroComp.DRkkplusone;
     const gtsam::Vector3& B_f_net = modelComp.netUnbiasedExtForceInBase;
     const gtsam::Vector3& B_tau_net = modelComp.netUnbiasedExtTorqueInBase;
+    const gtsam::Vector3 DRikfdt = DRik.rotate(B_f_net)*dt;
 
     m_deltaRij = m_deltaRij*ExpOmegaDt;
-    m_deltaCdotij += (1/m)*DRik.rotate(B_f_net)*dt;
-    m_deltaCij += (1.5/m)*DRik.rotate(B_f_net)*dt*dt;
+    m_deltaCdotij += (1/m)*DRikfdt;
+    m_deltaCij += m_deltaCdotij*dt + (0.5/m)*DRikfdt*dt;
     m_deltaHaij += DRik.rotate(B_tau_net)*dt;
 }
 
@@ -439,7 +442,7 @@ void PreintegratedCDMCumulativeBias::updateBiasJacobians(const CDMModelComputati
     double dtSq{dt*dt};
     const auto& m = modelComp.mass;
     const double oneByM = (1/m);
-    const double threeByTwoM = (1.5/m);
+    const double halfByM = (0.5/m);
     const gtsam::Matrix3& DRik = gyroComp.DRik.matrix();
 
     const auto& DRkkplusone = gyroComp.DRkkplusone;
@@ -457,8 +460,8 @@ void PreintegratedCDMCumulativeBias::updateBiasJacobians(const CDMModelComputati
     m_delRdelBiasGyro = DRkkplusoneT*dRdbg_old - gyroComp.Jr*dt;
     m_delCdotdelBiasGyro += (-oneByM*DRik_Sf_dRbdbg*dt);
     m_delCdotdelBiasNetForce += (-oneByM*DRik_dt);
-    m_delCdelBiasGyro += (-threeByTwoM*DRik_Sf_dRbdbg*dtSq);
-    m_delCdelBiasNetForce += (-threeByTwoM*DRik_dt*dt);
+    m_delCdelBiasGyro += (-halfByM*DRik_Sf_dRbdbg*dtSq + m_delCdotdelBiasGyro*dt);
+    m_delCdelBiasNetForce += (-halfByM*DRik_dt*dt + m_delCdotdelBiasNetForce*dt);
     m_delHadelBiasGyro += (-DRik_Stau_dRbdbg*dt);
     m_delHadelBiasNetTorque += (-DRik_dt);
     m_delHadelBiasCOMPosition += (-DRik_Sf*dt);
