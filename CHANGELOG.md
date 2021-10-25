@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed implementation of `PointsTracker` class (https://github.com/dic-iit/kindyn-vio/pull/23).
+- Fixed multiple bugs in `CentroidalDynamicsFactor`, `PreintegratedCDMCumulativeBias`, `CDMBiasCumulative`, `CentroidalDynamicsPreintegrator`. (https://github.com/ami-iit/kindyn-vio/pull/35).
 
 ### Changed
 - Modified `ImageProcessor` class into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/dic-iit/kindyn-vio/pull/29)

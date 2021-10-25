@@ -32,7 +32,7 @@ private:
 
 public:
     /// dimension of the variable - used to autodetect sizes
-    inline static const std::size_t dimension = 12;
+    inline static const std::size_t dimension = 9;
 
     CDMBiasCumulative();
     CDMBiasCumulative(const gtsam::Vector3& bCOMPositionInBase,
