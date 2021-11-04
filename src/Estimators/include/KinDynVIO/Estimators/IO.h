@@ -73,6 +73,15 @@ struct ArucoKeyFrame
     gtsam::Pose3 b_H_cam;
 };
 
+struct CentroidalStateStdDev
+{
+    Eigen::Vector3d com;
+    Eigen::Vector3d dcom;
+    Eigen::Vector3d ha;
+    // net wrench bias and com position bias in base frame
+    Eigen::Vector3d forceBias, torqueBias, comPositionBias;
+};
+
 } // namespace Estimators
 } // namespace KinDynVIO
 
