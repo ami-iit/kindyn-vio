@@ -74,7 +74,6 @@ public:
     gtsam::Cal3_S2::shared_ptr camK;
     gtsam::Pose3 b_H_cam;
 
-
     gtsam::Pose3 estimatedBasePose;
     gtsam::Vector3 estimatedBaseLinVel;
     gtsam::imuBias::ConstantBias estimatedIMUBias;
@@ -372,6 +371,10 @@ void GraphManager::spawnNewState(const double& timeStamp)
     auto currentPoseKey{X(m_pimpl->currentStateIdx)};
     auto currentVelKey{V(m_pimpl->currentStateIdx)};
     auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+    auto currentCOMKey{C(m_pimpl->currentStateIdx)};
+    auto currentCOMVelKey{D(m_pimpl->currentStateIdx)};
+    auto currentAngMomentumKey{H(m_pimpl->currentStateIdx)};
+    auto currentCDMBiasKey{E(m_pimpl->currentStateIdx)};
 
     BipedalLocomotion::log()->info("{} Spawned new state idx: {} at ts: {}.",
                                    printPrefix,
@@ -379,6 +382,9 @@ void GraphManager::spawnNewState(const double& timeStamp)
     // get time stamp from the spawned state index
     m_pimpl->newTimeStamps[currentPoseKey] = m_pimpl->newTimeStamps[currentVelKey]
         = m_pimpl->newTimeStamps[currentIMUBiasKey] = timeStamp;
+    m_pimpl->newTimeStamps[currentCOMKey] = m_pimpl->newTimeStamps[currentCOMVelKey]
+        = m_pimpl->newTimeStamps[currentAngMomentumKey] = timeStamp;
+    m_pimpl->newTimeStamps[currentCDMBiasKey] = timeStamp;
 }
 
 void GraphManager::setInitialGuessForCurrentBaseStates(const gtsam::Pose3& pose,
@@ -773,6 +779,11 @@ gtsam::FastList<gtsam::Key> GraphManager::Impl::findAndMoveKeysBefore(double tim
         keys.emplace_back(X(iter->second));
         keys.emplace_back(V(iter->second));
         keys.emplace_back(B(iter->second));
+
+        keys.emplace_back(C(iter->second));
+        keys.emplace_back(D(iter->second));
+        keys.emplace_back(H(iter->second));
+        keys.emplace_back(E(iter->second));
 
         removeTimeStamps.emplace_back(iter->first);
     }
