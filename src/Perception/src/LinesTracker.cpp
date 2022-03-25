@@ -6,7 +6,7 @@
  * version.
  *
  * This file is authored by:
- *  (c) 2021 Prashanth Ramadoss @ DIC-IIT, Genova, Italy
+ *  (c) 2021 Prashanth Ramadoss @ ami-iit, Genova, Italy
  *
  *  adapted from the file `VINS-MONO/feature_tracker.cpp`:
  *  (c) 2017 Tong QIN @ HKUST-Aerial-Robotics Group, Hong Kong

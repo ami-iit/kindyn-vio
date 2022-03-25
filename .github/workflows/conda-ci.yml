@@ -45,7 +45,7 @@ jobs:
 
     # Additional dependencies useful only on Linux
     - name: Additional Dependencies [Linux]
-      if: contains(matrix.os, 'ubuntu') 
+      if: contains(matrix.os, 'ubuntu')
       shell: bash -l {0}
       run: |
         # Additional dependencies only useful on Linux
@@ -82,9 +82,8 @@ jobs:
       run: |
         # bipedal-locomotion-framework
         cd ${GITHUB_WORKSPACE}
-        git clone https://github.com/dic-iit/bipedal-locomotion-framework
+        git clone -b ${blf_TAG} https://github.com/ami-iit/bipedal-locomotion-framework
         cd bipedal-locomotion-framework
-        git checkout ${blf_TAG}
         mkdir -p build
         cd build
         cmake -GNinja -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
@@ -109,7 +108,7 @@ jobs:
 
     #    # bipedal-locomotion-framework
     #    cd ${GITHUB_WORKSPACE}
-    #    git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+    #    git clone -b ${blf_TAG} https://github.com/ami-iit/bipedal-locomotion-framework
     #    cd bipedal-locomotion-framework
     #    mkdir -p build
     #    cd build
@@ -147,4 +146,3 @@ jobs:
       run: |
         cd build
         ctest --output-on-failure -C ${{ matrix.build_type }}
-
