@@ -5,7 +5,7 @@
  * distributed under the terms of the GNU General Public License v3.0 (GPL-3.0 License) or any later version.
  *
  * This file is authored by:
- *  (c) 2021 Prashanth Ramadoss @ DIC-IIT, Genova, Italy
+ *  (c) 2021 Prashanth Ramadoss @ ami-iit, Genova, Italy
  *
  *  adapted from the file `VINS-MONO/feature_tracker.cpp`:
  *  (c) 2017 Tong QIN @ HKUST-Aerial-Robotics Group, Hong Kong

@@ -82,7 +82,7 @@ jobs:
       run: |
         # bipedal-locomotion-framework
         cd ${GITHUB_WORKSPACE}
-        git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+        git clone -b ${blf_TAG} https://github.com/ami-iit/bipedal-locomotion-framework
         cd bipedal-locomotion-framework
         mkdir -p build
         cd build
@@ -108,7 +108,7 @@ jobs:
 
     #    # bipedal-locomotion-framework
     #    cd ${GITHUB_WORKSPACE}
-    #    git clone -b ${blf_TAG} https://github.com/dic-iit/bipedal-locomotion-framework
+    #    git clone -b ${blf_TAG} https://github.com/ami-iit/bipedal-locomotion-framework
     #    cd bipedal-locomotion-framework
     #    mkdir -p build
     #    cd build
