@@ -63,6 +63,8 @@ bool readRobotMatFile(const std::string& matFilePath, RobotMatData& rmd)
                       "r_hip_pitch",    "r_hip_roll",  "r_hip_yaw",        "r_knee",
                       "r_ankle_pitch",  "r_ankle_roll"};
 
+    updateRobotMatBaseVelocity(rmd);
+
     return true;
 }
 
@@ -105,76 +107,29 @@ bool writeLoggableToFile(const Loggable& log, const std::string& fileName)
     matioCpp::File file = matioCpp::File::Create(fileName);
     bool writeOk{true};
 
-    if (log.estTime.size() > 0)
-    {
-        matioCpp::MultiDimensionalArray<double> outEstPos{"estPosition",
-                                                          {static_cast<std::size_t>(
-                                                               log.estPosition.rows()),
-                                                           static_cast<std::size_t>(
-                                                               log.estPosition.cols())},
-                                                          log.estPosition.data()};
-        matioCpp::MultiDimensionalArray<double> outEstRot{"estRotation",
-                                                          {static_cast<std::size_t>(
-                                                               log.estRotation.rows()),
-                                                           static_cast<std::size_t>(
-                                                               log.estRotation.cols())},
-                                                          log.estRotation.data()};
-        matioCpp::MultiDimensionalArray<double> outEstTime{"estTime",
-                                                           {static_cast<std::size_t>(
-                                                                log.estTime.rows()),
-                                                            static_cast<std::size_t>(
-                                                                log.estTime.cols())},
-                                                           log.estTime.data()};
-        writeOk = writeOk && file.write(outEstPos);
-        writeOk = writeOk && file.write(outEstRot);
-        writeOk = writeOk && file.write(outEstTime);
-    }
-    matioCpp::MultiDimensionalArray<double> outSimPos{"simPosition",
-                                                      {static_cast<std::size_t>(
-                                                           log.simPosition.rows()),
-                                                       static_cast<std::size_t>(
-                                                           log.simPosition.cols())},
-                                                      log.simPosition.data()};
-    matioCpp::MultiDimensionalArray<double> outSimRot{"simRotation",
-                                                      {static_cast<std::size_t>(
-                                                           log.simRotation.rows()),
-                                                       static_cast<std::size_t>(
-                                                           log.simRotation.cols())},
-                                                      log.simRotation.data()};
-    matioCpp::MultiDimensionalArray<double> outSimTime{"simTime",
-                                                       {static_cast<std::size_t>(log.simTime.rows()),
-                                                        static_cast<std::size_t>(
-                                                            log.simTime.cols())},
-                                                       log.simTime.data()};
+    writeOk = writeOk && checkAndWriteToFile("estPosition", log.estPosition, file);
+    writeOk = writeOk && checkAndWriteToFile("estRotation", log.estRotation, file);
+    writeOk = writeOk && checkAndWriteToFile("estVelocity", log.estVelocity, file);
+    writeOk = writeOk && checkAndWriteToFile("estTime", log.estTime, file);
 
-    if (log.smootherTime.size() > 0)
-    {
-        matioCpp::MultiDimensionalArray<double> outSmoothPos{"smootherPosition",
-                                                             {static_cast<std::size_t>(
-                                                                  log.smootherPosition.rows()),
-                                                              static_cast<std::size_t>(
-                                                                  log.smootherPosition.cols())},
-                                                             log.smootherPosition.data()};
-        matioCpp::MultiDimensionalArray<double> outSmoothRot{"smootherRotation",
-                                                             {static_cast<std::size_t>(
-                                                                  log.smootherRotation.rows()),
-                                                              static_cast<std::size_t>(
-                                                                  log.smootherRotation.cols())},
-                                                             log.smootherRotation.data()};
-        matioCpp::MultiDimensionalArray<double> outSmoothTime{"smootherTime",
-                                                              {static_cast<std::size_t>(
-                                                                   log.smootherTime.rows()),
-                                                               static_cast<std::size_t>(
-                                                                   log.smootherTime.cols())},
-                                                              log.smootherTime.data()};
-        writeOk = writeOk && file.write(outSmoothPos);
-        writeOk = writeOk && file.write(outSmoothRot);
-        writeOk = writeOk && file.write(outSmoothTime);
-    }
+    writeOk = writeOk && checkAndWriteToFile("simPosition", log.simPosition, file);
+    writeOk = writeOk && checkAndWriteToFile("simRotation", log.simRotation, file);
+    writeOk = writeOk && checkAndWriteToFile("simVelocity", log.simVelocity, file);
+    writeOk = writeOk && checkAndWriteToFile("simTime", log.simTime, file);
 
-    writeOk = writeOk && file.write(outSimPos);
-    writeOk = writeOk && file.write(outSimRot);
-    writeOk = writeOk && file.write(outSimTime);
+    writeOk = writeOk && checkAndWriteToFile("smootherPosition", log.smootherPosition, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherRotation", log.smootherRotation, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherLinearVelocity", log.smootherLinearVelocity, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherTime", log.smootherTime, file);
+
+    writeOk = writeOk && checkAndWriteToFile("simCOM", log.simCOM, file);
+    writeOk = writeOk && checkAndWriteToFile("simCOMVel", log.simCOMVel, file);
+    writeOk = writeOk && checkAndWriteToFile("simAngMomentum", log.simAngMomentum, file);
+
+    writeOk = writeOk && checkAndWriteToFile("smootherCOM", log.smootherCOM, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherCOMVel", log.smootherCOMVel, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherAngMomentum", log.smootherAngMomentum, file);
+    writeOk = writeOk && checkAndWriteToFile("smootherCDMBias", log.smootherCDMBias, file);
 
     if (!writeOk)
     {
@@ -456,8 +411,8 @@ ParamsHandler getIMUPreintConfig()
         = std::make_shared<BipedalLocomotion::ParametersHandler::StdImplementation>();
     parameterHandler->setParameter("sigma_acc", 0.1);
     parameterHandler->setParameter("sigma_gyro", 0.01);
-    parameterHandler->setParameter("sigma_b_acc", 1e-6);
-    parameterHandler->setParameter("sigma_b_gyro", 1e-6);
+    parameterHandler->setParameter("sigma_b_acc", 1e-3);
+    parameterHandler->setParameter("sigma_b_gyro", 1e-3);
     parameterHandler->setParameter("sigma_pos_integration", 1e6);
     parameterHandler->setParameter("error_bias", 1e-4);
     parameterHandler->setParameter("initial_bias", std::vector<double>{0., 0., 0., 0., 0., 0.});
@@ -504,5 +459,65 @@ ParamsHandler getVisionFrontEndConfig()
     fMgrGroup->setParameter("keyframe_history_size", 5);
 
     return handle;
+}
+
+ParamsHandler getCentroidalDynPreintConfig()
+{
+    auto parameterHandler
+        = std::make_shared<BipedalLocomotion::ParametersHandler::StdImplementation>();
+    parameterHandler->setParameter("sigma_gyro", 1e-2);
+    parameterHandler->setParameter("sigma_ext_force", 20.0);
+    parameterHandler->setParameter("sigma_ext_torque", 5.0);
+    parameterHandler->setParameter("sigma_com_pos", 5e-2);
+    parameterHandler->setParameter("sigma_b_gyro", 1e-6);
+    parameterHandler->setParameter("sigma_b_ext_force", 1e-6);
+    parameterHandler->setParameter("sigma_b_ext_torque", 1e-6);
+    parameterHandler->setParameter("sigma_b_com_pos", 1e-6);
+    parameterHandler->setParameter("initial_imu_bias", std::vector<double>{0., 0., 0., 0., 0., 0.});
+    parameterHandler->setParameter("initial_cdm_bias", std::vector<double>{0., 0., 0., 0., 0., 0., 0., 0., 0.});
+    parameterHandler->setParameter("gravity", std::vector<double>{0., 0., -9.80665});
+    parameterHandler->setParameter("base_link_name", "root_link");
+    parameterHandler->setParameter("base_link_imu_name", "root_link_imu_acc");
+
+    return parameterHandler;
+}
+
+Eigen::Vector3d getGravity()
+{
+    Eigen::Vector3d g;
+    g << 0., 0., -9.80665;
+    return g;
+}
+
+void updateRobotMatBaseVelocity(RobotMatData& rmd)
+{
+    rmd.sbaseVel.resize(rmd.time.size(), 6);
+    auto bHimu = getBaseHIMU();
+    Eigen::Matrix3d bRimu = bHimu.rotation().matrix();
+    for (std::size_t iter = 0; iter < rmd.time.size(); iter++)
+    {
+        auto w_R_b = iDynTree::Rotation::RPY(rmd.sbaseRot.row(iter)(0),
+                                             rmd.sbaseRot.row(iter)(1),
+                                             rmd.sbaseRot.row(iter)(2));
+        // use gyroscope measurement as angular velocity
+        Eigen::Vector3d gyro  = rmd.imuOmega.row(iter);
+        Eigen::Vector3d bOmega = iDynTree::toEigen(w_R_b)*bRimu*gyro;
+        Eigen::Vector3d bv;
+        if (iter == 0)
+        {
+            bv.setZero();
+        }
+        else
+        {
+            // finite difference of position
+            auto dt = rmd.time(iter)- rmd.time(iter-1);
+            Eigen::Vector3d dP = rmd.sbasePos.row(iter) - rmd.sbasePos.row(iter-1);
+            bv = dP*(1/dt);
+        }
+
+        Eigen::Matrix<double, 6, 1> vel;
+        vel << bv, bOmega;
+        rmd.sbaseVel.row(iter) = vel.transpose();
+    }
 }
 

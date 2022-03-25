@@ -7,6 +7,7 @@
 
 #include <BipedalLocomotion/TextLogging/Logger.h>
 #include <KinDynVIO/Estimators/GraphManager.h>
+#include <KinDynVIO/Factors/CentroidalDynamicsFactor.h>
 #include <gtsam/slam/SmartProjectionPoseFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -15,21 +16,23 @@
 
 using namespace KinDynVIO::Estimators;
 using namespace KinDynVIO::Perception;
+using namespace KinDynVIO::Factors;
+
 using gtsam::symbol_shorthand::B; // IMU bias
-using gtsam::symbol_shorthand::L; // IMU bias
+using gtsam::symbol_shorthand::L; // Landmark
 using gtsam::symbol_shorthand::V; // Base Velocity
 using gtsam::symbol_shorthand::X; // Base Pose
+
+using gtsam::symbol_shorthand::C; // COM position
+using gtsam::symbol_shorthand::D; // COM velocity
+using gtsam::symbol_shorthand::H; // Angular momentum
+using gtsam::symbol_shorthand::E; // Centroidal Dynamics Measurement Bias
 
 using SmartFactor = gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2>;
 using Slot = long int;
 using LandmarkID = long long int;
 using SmartFactorMap = std::unordered_map<long long int, SmartFactor::shared_ptr>;
 using SmartFactorMapExtended = gtsam::FastMap<long long int, std::pair<SmartFactor::shared_ptr, Slot> >;
-
-//     using gtsam::symbol_shorthand::C; // COM position
-//     using gtsam::symbol_shorthand::D; // COM velocity
-//     using gtsam::symbol_shorthand::H; // Angular momentum
-//     using gtsam::symbol_shorthand::E; // Centroidal Dynamics Measurement Bias
 
 class GraphManager::Impl
 {
@@ -71,10 +74,11 @@ public:
     gtsam::Cal3_S2::shared_ptr camK;
     gtsam::Pose3 b_H_cam;
 
-
     gtsam::Pose3 estimatedBasePose;
     gtsam::Vector3 estimatedBaseLinVel;
     gtsam::imuBias::ConstantBias estimatedIMUBias;
+    gtsam::Vector3 estimatedCOM, estimatedCOMVelocity, estimatedAngMomentum;
+    CDMBias estimatedCDMBias;
 };
 
 GraphManager::GraphManager()
@@ -141,6 +145,51 @@ bool GraphManager::addBaseStatePriorAtCurrentKey(const double& timeStamp,
         = m_pimpl->newTimeStamps[imuBiasKey] = timeStamp;
     m_pimpl->fullTimeStamps[poseKey] = m_pimpl->fullTimeStamps[velKey]
         = m_pimpl->fullTimeStamps[imuBiasKey] = timeStamp;
+
+    m_pimpl->keyIdxLookupByTimeStamp[timeStamp] = m_pimpl->currentStateIdx;
+    m_pimpl->timestampLookupByKeyIdx[m_pimpl->currentStateIdx] = timeStamp;
+
+    return true;
+}
+
+bool GraphManager::addCentroidalStatePriorAtCurrentKey(const double& timeStamp,
+                                                       const gtsam::Vector3& comPosition,
+                                                       const gtsam::Vector3& comVelocity,
+                                                       const gtsam::Vector3& angularMomentum,
+                                                       const CentroidalStateStdDev& priorNoise,
+                                                       CDMBias cdmBias)
+{
+    auto comKey{C(m_pimpl->currentStateIdx)};
+    auto comVelKey{D(m_pimpl->currentStateIdx)};
+    auto angMomentumKey{H(m_pimpl->currentStateIdx)};
+    auto cdmBiasKey{E(m_pimpl->currentStateIdx)};
+
+    auto comPriorNoise = gtsam::noiseModel::Diagonal::Sigmas(priorNoise.com);
+    auto dcomPriorNoise = gtsam::noiseModel::Diagonal::Sigmas(priorNoise.dcom);
+    auto angMomentumPriorNoise = gtsam::noiseModel::Diagonal::Sigmas(priorNoise.ha);
+
+    Eigen::Matrix<double, 9, 1> biasNoiseV;
+    biasNoiseV << priorNoise.comPositionBias, priorNoise.forceBias, priorNoise.torqueBias;
+    auto biasNoise = gtsam::noiseModel::Diagonal::Sigmas(biasNoiseV);
+
+    m_pimpl->newFactors.addPrior(comKey, comPosition, comPriorNoise);
+    m_pimpl->newFactors.addPrior(comVelKey, comVelocity, dcomPriorNoise);
+    m_pimpl->newFactors.addPrior(angMomentumKey, angularMomentum, angMomentumPriorNoise);
+    m_pimpl->newFactors.addPrior(cdmBiasKey, cdmBias, biasNoise);
+
+    m_pimpl->newValues.insert(comKey, comPosition);
+    m_pimpl->newValues.insert(comVelKey, comVelocity);
+    m_pimpl->newValues.insert(angMomentumKey, angularMomentum);
+    m_pimpl->newValues.insert(cdmBiasKey, cdmBias);
+    m_pimpl->fullValues.insert(comKey, comPosition);
+    m_pimpl->fullValues.insert(comVelKey, comVelocity);
+    m_pimpl->fullValues.insert(angMomentumKey, angularMomentum);
+    m_pimpl->fullValues.insert(cdmBiasKey, cdmBias);
+
+    m_pimpl->newTimeStamps[comKey] = m_pimpl->newTimeStamps[comVelKey]
+        = m_pimpl->newTimeStamps[angMomentumKey] = m_pimpl->newTimeStamps[cdmBiasKey] = timeStamp;
+    m_pimpl->fullTimeStamps[comKey] = m_pimpl->fullTimeStamps[comVelKey]
+        = m_pimpl->fullTimeStamps[angMomentumKey] = m_pimpl->fullTimeStamps[cdmBiasKey] = timeStamp;
 
     m_pimpl->keyIdxLookupByTimeStamp[timeStamp] = m_pimpl->currentStateIdx;
     m_pimpl->timestampLookupByKeyIdx[m_pimpl->currentStateIdx] = timeStamp;
@@ -298,6 +347,15 @@ bool GraphManager::optimize()
     m_pimpl->estimatedIMUBias
         = m_pimpl->smoother.calculateEstimate<gtsam::imuBias::ConstantBias>(imuBiasKey);
 
+    auto comKey = C(m_pimpl->currentStateIdx);
+    auto comVelKey = D(m_pimpl->currentStateIdx);
+    auto angMomentumKey = H(m_pimpl->currentStateIdx);
+    auto cdmBiasKey = E(m_pimpl->currentStateIdx);
+    m_pimpl->estimatedCOM = m_pimpl->smoother.calculateEstimate<gtsam::Vector3>(comKey);
+    m_pimpl->estimatedCOMVelocity = m_pimpl->smoother.calculateEstimate<gtsam::Vector3>(comVelKey);
+    m_pimpl->estimatedAngMomentum = m_pimpl->smoother.calculateEstimate<gtsam::Vector3>(angMomentumKey);
+    m_pimpl->estimatedCDMBias = m_pimpl->smoother.calculateEstimate<CDMBias>(cdmBiasKey);
+
     return true;
 }
 
@@ -313,6 +371,10 @@ void GraphManager::spawnNewState(const double& timeStamp)
     auto currentPoseKey{X(m_pimpl->currentStateIdx)};
     auto currentVelKey{V(m_pimpl->currentStateIdx)};
     auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+    auto currentCOMKey{C(m_pimpl->currentStateIdx)};
+    auto currentCOMVelKey{D(m_pimpl->currentStateIdx)};
+    auto currentAngMomentumKey{H(m_pimpl->currentStateIdx)};
+    auto currentCDMBiasKey{E(m_pimpl->currentStateIdx)};
 
     BipedalLocomotion::log()->info("{} Spawned new state idx: {} at ts: {}.",
                                    printPrefix,
@@ -320,11 +382,14 @@ void GraphManager::spawnNewState(const double& timeStamp)
     // get time stamp from the spawned state index
     m_pimpl->newTimeStamps[currentPoseKey] = m_pimpl->newTimeStamps[currentVelKey]
         = m_pimpl->newTimeStamps[currentIMUBiasKey] = timeStamp;
+    m_pimpl->newTimeStamps[currentCOMKey] = m_pimpl->newTimeStamps[currentCOMVelKey]
+        = m_pimpl->newTimeStamps[currentAngMomentumKey] = timeStamp;
+    m_pimpl->newTimeStamps[currentCDMBiasKey] = timeStamp;
 }
 
-void GraphManager::setInitialGuessForCurrentStates(const gtsam::Pose3& pose,
-                                                   const gtsam::Vector3& vel,
-                                                   gtsam::imuBias::ConstantBias imuBias)
+void GraphManager::setInitialGuessForCurrentBaseStates(const gtsam::Pose3& pose,
+                                                       const gtsam::Vector3& vel,
+                                                       gtsam::imuBias::ConstantBias imuBias)
 {
     auto currentPoseKey{X(m_pimpl->currentStateIdx)};
     auto currentVelKey{V(m_pimpl->currentStateIdx)};
@@ -335,6 +400,25 @@ void GraphManager::setInitialGuessForCurrentStates(const gtsam::Pose3& pose,
     m_pimpl->fullValues.insert(currentPoseKey, pose);
     m_pimpl->fullValues.insert(currentVelKey, vel);
     m_pimpl->fullValues.insert(currentIMUBiasKey, imuBias);
+}
+
+void GraphManager::setInitialGuessForCurrentCentroidalStates(const gtsam::Vector3& comPosition,
+                                                             const gtsam::Vector3& comVelocity,
+                                                             const gtsam::Vector3& angularMomentum,
+                                                             CDMBias cdmBias)
+{
+    auto currentCOMKey{C(m_pimpl->currentStateIdx)};
+    auto currentCOMVelKey{D(m_pimpl->currentStateIdx)};
+    auto currentAngMomentumKey{H(m_pimpl->currentStateIdx)};
+    auto currentCDMBiasKey{E(m_pimpl->currentStateIdx)};
+    m_pimpl->newValues.insert(currentCOMKey, comPosition);
+    m_pimpl->newValues.insert(currentCOMVelKey, comVelocity);
+    m_pimpl->newValues.insert(currentAngMomentumKey, angularMomentum);
+    m_pimpl->newValues.insert(currentCDMBiasKey, cdmBias);
+    m_pimpl->fullValues.insert(currentCOMKey, comPosition);
+    m_pimpl->fullValues.insert(currentCOMVelKey, comVelocity);
+    m_pimpl->fullValues.insert(currentAngMomentumKey, angularMomentum);
+    m_pimpl->fullValues.insert(currentCDMBiasKey, cdmBias);
 }
 
 void GraphManager::processPreintegratedIMUMeasurements(
@@ -553,6 +637,40 @@ void GraphManager::processZeroVelocityMeasurements(const double& sigmaLin)
     m_pimpl->newFactors.add(zeroVelocityFactor);
 }
 
+void GraphManager::processPreintegratedCDM(
+    const KinDynVIO::Factors::PreintegratedCDMCumulativeBias& preintCDM)
+{
+    auto prevPoseKey{X(m_pimpl->previousStateIdx)};
+    auto prevCOMKey{C(m_pimpl->previousStateIdx)};
+    auto prevCOMVelKey{D(m_pimpl->previousStateIdx)};
+    auto prevAngMomentumKey{H(m_pimpl->previousStateIdx)};
+    auto prevIMUBiasKey{B(m_pimpl->previousStateIdx)};
+    auto prevCDMBiasKey{E(m_pimpl->previousStateIdx)};
+
+    auto currentPoseKey{X(m_pimpl->currentStateIdx)};
+    auto currentCOMKey{C(m_pimpl->currentStateIdx)};
+    auto currentCOMVelKey{D(m_pimpl->currentStateIdx)};
+    auto currentAngMomentumKey{H(m_pimpl->currentStateIdx)};
+    auto currentIMUBiasKey{B(m_pimpl->currentStateIdx)};
+    auto currentCDMBiasKey{E(m_pimpl->currentStateIdx)};
+
+    auto cdmFactor = CentroidalDynamicsFactor(prevPoseKey,
+                                              prevCOMVelKey,
+                                              prevCOMKey,
+                                              prevAngMomentumKey,
+                                              currentPoseKey,
+                                              currentCOMVelKey,
+                                              currentCOMKey,
+                                              currentAngMomentumKey,
+                                              prevIMUBiasKey,
+                                              prevCDMBiasKey,
+                                              currentIMUBiasKey,
+                                              currentCDMBiasKey,
+                                              preintCDM);
+
+    m_pimpl->newFactors.add(cdmFactor);
+}
+
 const gtsam::IncrementalFixedLagSmoother& GraphManager::smoother() const
 {
     return m_pimpl->smoother;
@@ -599,6 +717,58 @@ gtsam::Vector3 GraphManager::getEstimatedBaseLinearVelocity() const
     }
 }
 
+gtsam::Vector3 GraphManager::getEstimatedCOMPosition() const
+{
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedCOM;
+    }
+    else
+    {
+        auto comKey{C(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::Vector3>(comKey);
+    }
+}
+
+gtsam::Vector3 GraphManager::getEstimatedCOMVelocity() const
+{
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedCOMVelocity;
+    }
+    else
+    {
+        auto comVelKey{D(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::Vector3>(comVelKey);
+    }
+}
+
+gtsam::Vector3 GraphManager::getEstimatedCentroidalAngularMomentum() const
+{
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedAngMomentum;
+    }
+    else
+    {
+        auto angMomentumKey{H(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<gtsam::Vector3>(angMomentumKey);
+    }
+}
+
+CDMBias GraphManager::getEstimatedCDMBias() const
+{
+    if (m_pimpl->currentStateIdx > 0)
+    {
+        return m_pimpl->estimatedCDMBias;
+    }
+    else
+    {
+        auto cdmBiasKey{E(m_pimpl->currentStateIdx)};
+        return m_pimpl->fullValues.at<CDMBias>(cdmBiasKey);
+    }
+}
+
 gtsam::FastList<gtsam::Key> GraphManager::Impl::findAndMoveKeysBefore(double timestamp)
 {
     gtsam::FastList<gtsam::Key> keys;
@@ -609,6 +779,11 @@ gtsam::FastList<gtsam::Key> GraphManager::Impl::findAndMoveKeysBefore(double tim
         keys.emplace_back(X(iter->second));
         keys.emplace_back(V(iter->second));
         keys.emplace_back(B(iter->second));
+
+        keys.emplace_back(C(iter->second));
+        keys.emplace_back(D(iter->second));
+        keys.emplace_back(H(iter->second));
+        keys.emplace_back(E(iter->second));
 
         removeTimeStamps.emplace_back(iter->first);
     }
@@ -646,3 +821,4 @@ bool GraphManager::Impl::factorHasAMarginalizableKey(boost::shared_ptr< gtsam::N
 
     return factorHasAMarginalizableKey;
 }
+

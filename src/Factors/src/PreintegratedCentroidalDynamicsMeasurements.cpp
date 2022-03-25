@@ -62,7 +62,7 @@ constexpr double massThreshold{1e-6};
 #define J_rDcdotij_bg_i(H9)   (H9)->block<3,3>(3,3)
 #define J_rDcij_bg_i(H9)      (H9)->block<3,3>(6,3)
 #define J_rDhaij_bg_i(H9)     (H9)->block<3,3>(9,3)
-#define J_rDbiasij_bg_i(H9)   (H9)->block<12,12>(12, 3)
+#define J_rDbiasij_bg_i(H9)   (H9)->block<3,3>(12, 3)
 
 #define J_rDRij_bG_i(H10)      (H10)->block<3,3>(0,0)
 #define J_rDRij_bf_i(H10)      (H10)->block<3,3>(0,3)
@@ -333,7 +333,7 @@ void PreintegratedCDMCumulativeBias::prepareG(const CDMModelComputations& modelC
     const std::size_t obsWBiasDim = obsDim + 3 + gtsam::CDMBiasCumulative::dimension;
     const auto& m = modelComp.mass;
     const auto oneByM = (1/m);
-    const auto threeByTwoM{1.5/m};
+    const auto halfByM{0.5/m};
     const auto& DRik = gyroComp.DRik.matrix();
 
     // both m_B and m_Sigma_n dimensions
@@ -368,7 +368,7 @@ void PreintegratedCDMCumulativeBias::prepareG(const CDMModelComputations& modelC
         m_Sigma_n.block<3, 3>(torqueIdxOffset, torqueIdxOffset) = m_p->getContactTorqueCovariance();
 
         m_B.block<3, 3>(3, forceIdxOffset) = oneByM*DRik_B_R_Ldt;
-        m_B.block<3, 3>(6, forceIdxOffset) = threeByTwoM*DRik_B_R_Ldt*dt;
+        m_B.block<3, 3>(6, forceIdxOffset) = halfByM*DRik_B_R_Ldt*dt;
         m_B.block<3, 3>(9, forceIdxOffset) = DRik*SpGL*B_R_Ldt;
         m_B.block<3, 3>(9, torqueIdxOffset) = DRik_B_R_Ldt;
         linkIdx++;
@@ -709,5 +709,6 @@ gtsam::Vector PreintegratedCDMCumulativeBias::getBiasCorrections(const ImuBias& 
     dbcdotij(&biasCorrection) = (m_delCdotdelBiasGyro*dbg) + (m_delCdotdelBiasNetForce*dbf);
     dbcij(&biasCorrection) = (m_delCdelBiasGyro*dbg) + (m_delCdelBiasNetForce*dbf);
     dbhaij(&biasCorrection) = (m_delHadelBiasGyro*dbg) + (m_delHadelBiasNetTorque*dbt) + (m_delHadelBiasCOMPosition*dbG);
+
     return biasCorrection;
 }

@@ -21,6 +21,8 @@
 #include <gtsam/inference/Key.h>
 
 #include <KinDynVIO/Estimators/IO.h>
+#include <KinDynVIO/Factors/CentroidalDynamicsMeasurementBias.h>
+#include <KinDynVIO/Factors/PreintegratedCentroidalDynamicsMeasurements.h>
 
 #include <memory>
 namespace KinDynVIO
@@ -29,6 +31,7 @@ namespace Estimators
 {
 using BaseStateDev = BipedalLocomotion::Estimators::FloatingBaseEstimators::StateStdDev;
 using IMUBias = gtsam::imuBias::ConstantBias;
+using CDMBias = gtsam::CDMBiasCumulative;
 
 class GraphManager
 {
@@ -47,11 +50,21 @@ public:
                                        const gtsam::Vector3& baseVel,
                                        const BaseStateDev& priorNoise,
                                        const IMUBias& bias = IMUBias());
+    bool addCentroidalStatePriorAtCurrentKey(const double& timeStamp,
+                                             const gtsam::Vector3& comPosition,
+                                             const gtsam::Vector3& comVelocity,
+                                             const gtsam::Vector3& angularMomentum,
+                                             const CentroidalStateStdDev& priorNoise,
+                                             CDMBias cdmBias = CDMBias());
 
     void spawnNewState(const double& timeStamp);
-    void setInitialGuessForCurrentStates(const gtsam::Pose3& pose,
-                                         const gtsam::Vector3& vel,
-                                         IMUBias imuBias = IMUBias());
+    void setInitialGuessForCurrentBaseStates(const gtsam::Pose3& pose,
+                                             const gtsam::Vector3& vel,
+                                             IMUBias imuBias = IMUBias());
+    void setInitialGuessForCurrentCentroidalStates(const gtsam::Vector3& comPosition,
+                                                   const gtsam::Vector3& comVelocity,
+                                                   const gtsam::Vector3& angularMomentum,
+                                                   CDMBias cdmBias = CDMBias());
 
     void processPreintegratedIMUMeasurements(const gtsam::PreintegratedCombinedMeasurements& preintIMU);
     void processPointFeatures(const KinDynVIO::Perception::TrackedFeatures& keyFrameFeatures,
@@ -65,6 +78,7 @@ public:
     void processZeroVelocityMeasurements(const double& sigmaLin);
     void processZeroMotionMeasurements(const double& sigmaPos,
                                        const double& sigmaRot);
+    void processPreintegratedCDM(const KinDynVIO::Factors::PreintegratedCDMCumulativeBias& preintCDM);
 
     bool optimize();
     void resetManager();
@@ -72,6 +86,11 @@ public:
     gtsam::Pose3 getEstimatedBasePose() const;
     IMUBias getEstimatedIMUBias() const;
     gtsam::Vector3 getEstimatedBaseLinearVelocity() const;
+
+    gtsam::Vector3 getEstimatedCOMPosition() const;
+    gtsam::Vector3 getEstimatedCOMVelocity() const;
+    CDMBias getEstimatedCDMBias() const;
+    gtsam::Vector3 getEstimatedCentroidalAngularMomentum() const;
 
     const gtsam::IncrementalFixedLagSmoother& smoother() const;
     const gtsam::NonlinearFactorGraph& graph() const;
