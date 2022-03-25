@@ -1,4 +1,4 @@
-# KinDynVIO: A Multimodal Sensor Fusion Framework for Whole Body Estimation of a Humanoid Robot ![C++ CI Workflow](https://github.com/dic-iit/kindyn-vio/actions/workflows/conda-ci.yml/badge.svg)
+# KinDynVIO: A Multimodal Sensor Fusion Framework for Whole Body Estimation of a Humanoid Robot ![C++ CI Workflow](https://github.com/ami-iit/kindyn-vio/actions/workflows/conda-ci.yml/badge.svg)
 
 
 <p align="center">
@@ -16,9 +16,9 @@
 - [iDynTree](https://github.com/robotology/idyntree)
 - [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) (**3.3.9** REQUIRED)
 - [manif](https://github.com/artivis/manif)
-- [BipedalLocomotionFramework](https://github.com/dic-iit/bipedal-locomotion-framework)
+- [BipedalLocomotionFramework](https://github.com/ami-iit/bipedal-locomotion-framework)
 - [spdlog](https://github.com/gabime/spdlog)
-- [matioCpp](https://github.com/dic-iit/matio-cpp)
+- [matioCpp](https://github.com/ami-iit/matio-cpp)
 - [OpenCV](https://github.com/opencv/opencv)
 - [GTSAM](https://github.com/borglab/gtsam)
 - [Catch2](https://github.com/catchorg/Catch2) Optional for tests
@@ -30,7 +30,7 @@
 ## Build the software
 
 ```sh
-git clone https://github.com/dic-iit/kindyn-vio.git
+git clone https://github.com/ami-iit/kindyn-vio.git
 cd kindyn-vio
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=<path/where/you/want/to/install> \
@@ -41,7 +41,7 @@ cmake --build . --config Release --target install
 
 ### Acknowledgements
 
-- CMake structure of the repository is derived from the [`BipedalLocomotionFramework`](https://github.com/dic-iit/bipedal-locomotion-framework) project.
+- CMake structure of the repository is derived from the [`BipedalLocomotionFramework`](https://github.com/ami-iit/bipedal-locomotion-framework) project.
 
 - Perception related libraries are derived from open-source projects [`VINS-MONO`](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) and [`PL-VINS`](https://github.com/cnqiangfu/PL-VINS). It must be noted that these repositories are distributed under GPL v3, and since the classes `PointsTracker` and `LinesTracker` which are modified versions of the original source code, these classes are distributed under GPL v3 license as well, while the rest of our repository is distributed under LGPL license v3.0 or more.
 

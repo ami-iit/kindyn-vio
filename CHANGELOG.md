@@ -7,19 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Fixed implementation of `PointsTracker` class (https://github.com/dic-iit/kindyn-vio/pull/23).
+- Fixed implementation of `PointsTracker` class (https://github.com/ami-iit/kindyn-vio/pull/23).
 
 ### Changed
-- Modified `ImageProcessor` class into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/dic-iit/kindyn-vio/pull/29)
-- Modified `IMUPreintegrator` class to account only for preintegrated measurements by refactoring the factor out of the class. (https://github.com/dic-iit/kindyn-vio/pull/30)
-- Move `KinDynVIO::Perception::TimeStampedImg` from `KinDynVIO/Perception/Features/ImageProcessor.h` to `KinDynVIO/Perception/Features/DataTypes.h`. (https://github.com/dic-iit/kindyn-vio/pull/30)
+- Modified `ImageProcessor` class into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/ami-iit/kindyn-vio/pull/29)
+- Modified `IMUPreintegrator` class to account only for preintegrated measurements by refactoring the factor out of the class. (https://github.com/ami-iit/kindyn-vio/pull/30)
+- Move `KinDynVIO::Perception::TimeStampedImg` from `KinDynVIO/Perception/Features/ImageProcessor.h` to `KinDynVIO/Perception/Features/DataTypes.h`. (https://github.com/ami-iit/kindyn-vio/pull/30)
 
 ### Added
 - Implement `PerceptionCameraModels` library containing `PinHoleCamera` class.
 - Implement `PerceptionFeatures` library containing `PointsTracker` class and `ImageProcessor` class.
-- Add `ArucoDetectorExample` and `PointsTrackerTest` (https://github.com/dic-iit/kindyn-vio/pull/21).
-- Implement `LinesTracker` class in `PerceptionFeatures` library and add `LinesTrackerTest`. (https://github.com/dic-iit/kindyn-vio/pull/23).
-- Improve `ImageProcessor` class to consider `LinesTracker` class (https://github.com/dic-iit/kindyn-vio/pull/23).
-- Add `IMUPreintegrator` class into `Estimators` library. This class wraps GTSAM `CombinedIMUFactor` preintegration into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/dic-iit/kindyn-vio/pull/29)
-- Add `ArucoWrapper` class into `Estimators` library to wrap `BipedalLocomotion::Perception::ArucoDetector` with `gtsam` relevant outputs. (https://github.com/dic-iit/kindyn-vio/pull/30)
-- Add `TestData` library to maintain common datasets for test-cases. (https://github.com/dic-iit/kindyn-vio/pull/30)
+- Add `ArucoDetectorExample` and `PointsTrackerTest` (https://github.com/ami-iit/kindyn-vio/pull/21).
+- Implement `LinesTracker` class in `PerceptionFeatures` library and add `LinesTrackerTest`. (https://github.com/ami-iit/kindyn-vio/pull/23).
+- Improve `ImageProcessor` class to consider `LinesTracker` class (https://github.com/ami-iit/kindyn-vio/pull/23).
+- Add `IMUPreintegrator` class into `Estimators` library. This class wraps GTSAM `CombinedIMUFactor` preintegration into a `BipedalLocomotion::System::Advanceable` type. (https://github.com/ami-iit/kindyn-vio/pull/29)
+- Add `ArucoWrapper` class into `Estimators` library to wrap `BipedalLocomotion::Perception::ArucoDetector` with `gtsam` relevant outputs. (https://github.com/ami-iit/kindyn-vio/pull/30)
+- Add `TestData` library to maintain common datasets for test-cases. (https://github.com/ami-iit/kindyn-vio/pull/30)
