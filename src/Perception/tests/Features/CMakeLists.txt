@@ -1,9 +1,8 @@
-# Copyright (C) 2021 Istituto Italiano di Tecnologia (IIT). All rights reserved.
-# This software may be modified and distributed under the terms of the
-# GNU Lesser General Public License v2.1 or any later version.
+# SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+# SPDX-License-Identifier: BSD-3-Clause
 # Copyright (C) 2020 Istituto Italiano di Tecnologia (IIT). All rights reserved.
 # This software may be modified and distributed under the terms of the
-# GNU Lesser General Public License v2.1 or any later version.
+# BSD-3-Clause license.
 
 add_kindyn_vio_test(
  NAME PointsTracker
